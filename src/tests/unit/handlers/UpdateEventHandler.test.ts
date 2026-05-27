@@ -5,6 +5,12 @@ import type { UpdateEventInput } from '../../../tools/registry.js';
 import type { RecurringEventHelpers } from '../../../handlers/core/RecurringEventHelpers.js';
 import { CalendarRegistry } from '../../../services/CalendarRegistry.js';
 
+// Phase 7f: mock the write-allowlist as a no-op. Refusal-path tests live in
+// src/tests/unit/utils/write-allowlist.test.ts and the Phase 7f handler test file.
+vi.mock('../../../utils/write-allowlist.js', () => ({
+  assertWritable: vi.fn(),
+}));
+
 // Mock the googleapis module
 vi.mock('googleapis', () => ({
   google: {

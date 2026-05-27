@@ -5,6 +5,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { OAuth2Client } from "google-auth-library";
 
+// Phase 7f: mock write-allowlist as no-op for shape tests.
+vi.mock('../../utils/write-allowlist.js', () => ({
+  assertWritable: vi.fn(),
+}));
+
 // Import tool handlers to test them directly
 import { ListCalendarsHandler } from "../../handlers/core/ListCalendarsHandler.js";
 import { CreateEventHandler } from "../../handlers/core/CreateEventHandler.js";
@@ -181,7 +186,8 @@ describe('Google Calendar MCP Server', () => {
       const result = await handler.runTool(mockEventArgs, mockAccounts);
 
       expect(mockCalendarApi.calendarList.get).toHaveBeenCalledWith({ calendarId: 'primary' });
-      expect(mockCalendarApi.events.insert).toHaveBeenCalledWith({
+      // Phase 7f adds sendUpdates: 'none' to the call args — relax outer match.
+      expect(mockCalendarApi.events.insert).toHaveBeenCalledWith(expect.objectContaining({
         calendarId: mockEventArgs.calendarId,
         requestBody: expect.objectContaining({
           summary: mockEventArgs.summary,
@@ -191,7 +197,7 @@ describe('Google Calendar MCP Server', () => {
           attendees: mockEventArgs.attendees,
           location: mockEventArgs.location,
         }),
-      });
+      }));
 
       expect(result.content).toHaveLength(1);
       expect(result.content[0].type).toBe('text');
@@ -229,13 +235,14 @@ describe('Google Calendar MCP Server', () => {
       await handler.runTool(mockEventArgs, mockAccounts);
 
       // Verify that the calendar's timezone was used
-      expect(mockCalendarApi.events.insert).toHaveBeenCalledWith({
+      // Phase 7f adds sendUpdates: 'none' to the call args — relax outer match.
+      expect(mockCalendarApi.events.insert).toHaveBeenCalledWith(expect.objectContaining({
         calendarId: mockEventArgs.calendarId,
         requestBody: expect.objectContaining({
           start: { dateTime: mockEventArgs.start, timeZone: 'Europe/London' },
           end: { dateTime: mockEventArgs.end, timeZone: 'Europe/London' },
         }),
-      });
+      }));
     });
 
     it('should handle timezone-aware datetime strings correctly', async () => {
@@ -266,13 +273,14 @@ describe('Google Calendar MCP Server', () => {
       await handler.runTool(mockEventArgs, mockAccounts);
 
       // Verify that timezone from datetime was used (no timeZone property)
-      expect(mockCalendarApi.events.insert).toHaveBeenCalledWith({
+      // Phase 7f adds sendUpdates: 'none' to the call args — relax outer match.
+      expect(mockCalendarApi.events.insert).toHaveBeenCalledWith(expect.objectContaining({
         calendarId: mockEventArgs.calendarId,
         requestBody: expect.objectContaining({
           start: { dateTime: mockEventArgs.start }, // No timeZone property
           end: { dateTime: mockEventArgs.end }, // No timeZone property
         }),
-      });
+      }));
     });
 
     it('should handle list-events tool correctly', async () => {

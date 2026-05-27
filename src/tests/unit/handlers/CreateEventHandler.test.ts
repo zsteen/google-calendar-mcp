@@ -3,6 +3,13 @@ import { CreateEventHandler } from '../../../handlers/core/CreateEventHandler.js
 import { OAuth2Client } from 'google-auth-library';
 import { CalendarRegistry } from '../../../services/CalendarRegistry.js';
 
+// Phase 7f: mock the write-allowlist as a no-op for the pre-existing tests.
+// The dedicated allowlist tests live in src/tests/unit/utils/write-allowlist.test.ts,
+// and the refusal-path tests live alongside in the Phase 7f describe block below.
+vi.mock('../../../utils/write-allowlist.js', () => ({
+  assertWritable: vi.fn(),
+}));
+
 // Mock the googleapis module
 vi.mock('googleapis', () => ({
   google: {
@@ -101,14 +108,15 @@ describe('CreateEventHandler', () => {
 
       const result = await handler.runTool(args, mockAccounts);
 
-      expect(mockCalendar.events.insert).toHaveBeenCalledWith({
+      // Phase 7f adds sendUpdates: 'none' to the call args — relax outer match.
+      expect(mockCalendar.events.insert).toHaveBeenCalledWith(expect.objectContaining({
         calendarId: 'primary',
         requestBody: expect.objectContaining({
           summary: 'Test Event',
           start: { dateTime: '2025-01-15T10:00:00', timeZone: 'America/Los_Angeles' },
           end: { dateTime: '2025-01-15T11:00:00', timeZone: 'America/Los_Angeles' }
         })
-      });
+      }));
 
       // Should not include id field when no custom ID provided
       expect(mockCalendar.events.insert.mock.calls[0][0].requestBody.id).toBeUndefined();
@@ -153,7 +161,7 @@ describe('CreateEventHandler', () => {
 
       const result = await handler.runTool(args, mockAccounts);
 
-      expect(mockCalendar.events.insert).toHaveBeenCalledWith({
+      expect(mockCalendar.events.insert).toHaveBeenCalledWith(expect.objectContaining({
         calendarId: 'primary',
         requestBody: expect.objectContaining({
           id: 'full-event',
@@ -167,7 +175,7 @@ describe('CreateEventHandler', () => {
             overrides: [{ method: 'email', minutes: 30 }]
           }
         })
-      });
+      }));
 
       const response = JSON.parse(result.content[0].text);
       expect(response.event).toBeDefined();
@@ -197,7 +205,7 @@ describe('CreateEventHandler', () => {
 
       const result = await handler.runTool(args, mockAccounts);
 
-      expect(mockCalendar.events.insert).toHaveBeenCalledWith({
+      expect(mockCalendar.events.insert).toHaveBeenCalledWith(expect.objectContaining({
         calendarId: 'primary',
         requestBody: expect.objectContaining({
           id: 'customevent2025',
@@ -205,7 +213,7 @@ describe('CreateEventHandler', () => {
           start: { dateTime: '2025-01-15T10:00:00', timeZone: 'America/Los_Angeles' },
           end: { dateTime: '2025-01-15T11:00:00', timeZone: 'America/Los_Angeles' }
         })
-      });
+      }));
 
       const response = JSON.parse(result.content[0].text);
       expect(response.event).toBeDefined();
@@ -390,9 +398,10 @@ describe('CreateEventHandler', () => {
 
       await handler.runTool(args, mockAccounts);
 
+      // Phase 7f contract: sendUpdates is hardcoded to 'none' regardless of input.
       expect(mockCalendar.events.insert).toHaveBeenCalledWith(
         expect.objectContaining({
-          sendUpdates: 'externalOnly'
+          sendUpdates: 'none'
         })
       );
     });
@@ -741,7 +750,8 @@ describe('CreateEventHandler', () => {
       });
       
       expect(callArgs.conferenceDataVersion).toBe(1);
-      expect(callArgs.sendUpdates).toBe('all');
+      // Phase 7f contract: input 'all' is overridden to 'none' at the handler boundary.
+      expect(callArgs.sendUpdates).toBe('none');
     });
   });
 

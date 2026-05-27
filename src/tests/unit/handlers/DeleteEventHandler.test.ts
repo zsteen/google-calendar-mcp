@@ -3,6 +3,22 @@ import { DeleteEventHandler } from '../../../handlers/core/DeleteEventHandler.js
 import { OAuth2Client } from 'google-auth-library';
 import { CalendarRegistry } from '../../../services/CalendarRegistry.js';
 
+// Phase 7f: mock the write-allowlist as a no-op; refusal-path coverage lives in
+// src/tests/unit/utils/write-allowlist.test.ts.
+vi.mock('../../../utils/write-allowlist.js', () => ({
+  assertWritable: vi.fn(),
+}));
+
+// Phase 7f: mock RecurringEventHelpers — the new delete-on-recurring guard
+// instantiates this. Default: report non-recurring so the existing tests
+// (which delete primary, non-recurring events) don't trip the scope refusal.
+vi.mock('../../../handlers/core/RecurringEventHelpers.js', () => ({
+  RecurringEventHelpers: class {
+    detectEventType = vi.fn().mockResolvedValue('single');
+    constructor(_calendar: any) {}
+  },
+}));
+
 // Mock the googleapis module
 vi.mock('googleapis', () => ({
   google: {
@@ -59,10 +75,12 @@ describe('DeleteEventHandler', () => {
 
       const result = await handler.runTool(args, mockAccounts);
 
+      // Phase 7f contract: sendUpdates is hardcoded to 'none' regardless of input
+      // (including the undefined case).
       expect(mockCalendar.events.delete).toHaveBeenCalledWith({
         calendarId: 'primary',
         eventId: 'event123',
-        sendUpdates: undefined
+        sendUpdates: 'none'
       });
 
       expect(result.content[0].type).toBe('text');
@@ -90,8 +108,8 @@ describe('DeleteEventHandler', () => {
     });
   });
 
-  describe('Send Updates Options', () => {
-    it('should send updates to all attendees when specified', async () => {
+  describe('Send Updates Options (Phase 7f contract: hardcoded to none)', () => {
+    it('forces sendUpdates to none when input is all', async () => {
       mockCalendar.events.delete.mockResolvedValue({ data: {} });
 
       const args = {
@@ -105,11 +123,11 @@ describe('DeleteEventHandler', () => {
       expect(mockCalendar.events.delete).toHaveBeenCalledWith({
         calendarId: 'primary',
         eventId: 'event123',
-        sendUpdates: 'all'
+        sendUpdates: 'none'
       });
     });
 
-    it('should send updates to external attendees only', async () => {
+    it('forces sendUpdates to none when input is externalOnly', async () => {
       mockCalendar.events.delete.mockResolvedValue({ data: {} });
 
       const args = {
@@ -123,11 +141,11 @@ describe('DeleteEventHandler', () => {
       expect(mockCalendar.events.delete).toHaveBeenCalledWith({
         calendarId: 'primary',
         eventId: 'event123',
-        sendUpdates: 'externalOnly'
+        sendUpdates: 'none'
       });
     });
 
-    it('should not send updates when none specified', async () => {
+    it('keeps sendUpdates as none when input is none', async () => {
       mockCalendar.events.delete.mockResolvedValue({ data: {} });
 
       const args = {

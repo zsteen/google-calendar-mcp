@@ -4,6 +4,11 @@ import { OAuth2Client } from 'google-auth-library';
 import { calendar_v3 } from 'googleapis';
 import { CalendarRegistry } from '../../../services/CalendarRegistry.js';
 
+// Phase 7f: mock write-allowlist as no-op for account-selection shape tests.
+vi.mock('../../../utils/write-allowlist.js', () => ({
+  assertWritable: vi.fn(),
+}));
+
 // Mock ConflictDetectionService to avoid calling Google APIs
 vi.mock('../../../services/conflict-detection/ConflictDetectionService.js', () => ({
   ConflictDetectionService: class {
