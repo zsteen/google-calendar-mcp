@@ -24,7 +24,8 @@ vi.mock('googleapis', () => ({
   google: {
     calendar: vi.fn(() => ({
       events: {
-        delete: vi.fn()
+        delete: vi.fn(),
+        get: vi.fn()
       }
     }))
   },
@@ -48,7 +49,11 @@ describe('DeleteEventHandler', () => {
     // Setup mock calendar
     mockCalendar = {
       events: {
-        delete: vi.fn()
+        delete: vi.fn(),
+        // Phase 7f: handler now calls events.get to learn the event shape
+        // (parent series vs instance vs single) before dispatching.
+        // Default to a single event so the existing tests stay green.
+        get: vi.fn().mockResolvedValue({ data: { id: 'event123' } })
       }
     };
 

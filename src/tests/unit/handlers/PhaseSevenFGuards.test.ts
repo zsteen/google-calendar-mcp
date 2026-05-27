@@ -102,6 +102,7 @@ describe('Phase 7f — recurring-event scope refusal (AT-7f-9)', () => {
 
     describe('DeleteEventHandler', () => {
         let handler: DeleteEventHandler;
+        let mockCalendar: any;
 
         beforeEach(() => {
             handler = new DeleteEventHandler();
@@ -110,12 +111,23 @@ describe('Phase 7f — recurring-event scope refusal (AT-7f-9)', () => {
                 accountId: 'test',
                 calendarId: 'household@group.calendar.google.com',
             });
-            vi.spyOn(handler as any, 'getCalendar').mockReturnValue({
-                events: { delete: vi.fn() },
-            });
+            // Phase 7f: handler calls events.get to learn the event shape.
+            // Tests in this block target a parent recurring series.
+            mockCalendar = {
+                events: {
+                    delete: vi.fn(),
+                    get: vi.fn().mockResolvedValue({
+                        data: {
+                            id: 'recurring-event-id',
+                            recurrence: ['RRULE:FREQ=WEEKLY;BYDAY=SA'],
+                        },
+                    }),
+                },
+            };
+            vi.spyOn(handler as any, 'getCalendar').mockReturnValue(mockCalendar);
         });
 
-        it('refuses when event is recurring and modificationScope is unset', async () => {
+        it('refuses when event is recurring (parent series) and modificationScope is unset', async () => {
             const args = {
                 calendarId: 'household@group.calendar.google.com',
                 eventId: 'recurring-event-id',
@@ -127,15 +139,62 @@ describe('Phase 7f — recurring-event scope refusal (AT-7f-9)', () => {
             );
         });
 
-        it('proceeds past the guard when modificationScope is supplied', async () => {
+        it('proceeds with scope=all on a parent series and deletes by parent ID', async () => {
             const args = {
                 calendarId: 'household@group.calendar.google.com',
                 eventId: 'recurring-event-id',
                 modificationScope: 'all',
             };
 
-            // Should not throw the scope-required error.
             await expect(handler.runTool(args, mockAccounts)).resolves.toBeDefined();
+            expect(mockCalendar.events.delete).toHaveBeenCalledWith(expect.objectContaining({
+                eventId: 'recurring-event-id',
+            }));
+        });
+
+        it('with scope=thisEventOnly and a pre-formatted instance eventId, deletes that instance directly (no double-format)', async () => {
+            // Regression for Claudia's AT-7f-12 fail 2026-05-28 — agent passed
+            // a computed instance ID as eventId; previous code re-applied
+            // formatInstanceId, producing eventId_xxx_xxx and 404.
+            mockCalendar.events.get.mockResolvedValueOnce({
+                data: {
+                    id: 'sfora_20260530T070000Z',
+                    recurringEventId: 'sfora',
+                    originalStartTime: { dateTime: '2026-05-30T09:00:00', timeZone: 'Africa/Johannesburg' },
+                },
+            });
+
+            const args = {
+                calendarId: 'household@group.calendar.google.com',
+                eventId: 'sfora_20260530T070000Z',
+                modificationScope: 'thisEventOnly',
+                originalStartTime: '2026-05-30T09:00:00+02:00',
+            };
+
+            await expect(handler.runTool(args, mockAccounts)).resolves.toBeDefined();
+            expect(mockCalendar.events.delete).toHaveBeenCalledWith(expect.objectContaining({
+                eventId: 'sfora_20260530T070000Z',
+            }));
+        });
+
+        it('with scope=all on an instance eventId, resolves to and deletes the parent series', async () => {
+            mockCalendar.events.get.mockResolvedValueOnce({
+                data: {
+                    id: 'sfora_20260530T070000Z',
+                    recurringEventId: 'sfora',
+                },
+            });
+
+            const args = {
+                calendarId: 'household@group.calendar.google.com',
+                eventId: 'sfora_20260530T070000Z',
+                modificationScope: 'all',
+            };
+
+            await expect(handler.runTool(args, mockAccounts)).resolves.toBeDefined();
+            expect(mockCalendar.events.delete).toHaveBeenCalledWith(expect.objectContaining({
+                eventId: 'sfora',
+            }));
         });
     });
 });
