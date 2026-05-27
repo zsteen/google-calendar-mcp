@@ -9,6 +9,7 @@ import { ConflictDetectionService } from "../../services/conflict-detection/inde
 import { CONFLICT_DETECTION_CONFIG } from "../../services/conflict-detection/config.js";
 import { createStructuredResponse, convertConflictsToStructured, createWarningsArray } from "../../utils/response-builder.js";
 import { CreateEventResponse, convertGoogleEventToStructured } from "../../types/structured-responses.js";
+import { assertWritable } from "../../utils/write-allowlist.js";
 
 export class CreateEventHandler extends BaseToolHandler {
     private conflictDetectionService: ConflictDetectionService;
@@ -29,6 +30,29 @@ export class CreateEventHandler extends BaseToolHandler {
             accounts,
             'write'
         );
+
+        // Phase 7f write allowlist — refuse any calendar outside the allowlist.
+        // Check runs AFTER name resolution so a name resolving to an out-of-allowlist
+        // ID is still refused. See PHASE-7F-SPEC.md §3 Patch B.
+        assertWritable(resolvedCalendarId);
+
+        // Phase 7f: hardcode sendUpdates to 'none' regardless of input.
+        // Promotes the "never email third-party attendees" prohibition from a
+        // written rule (CW#23: not load-bearing under adversarial prompts) to a
+        // hard control at the handler boundary. The downstream events.insert call
+        // reads args.sendUpdates, so mutating args here applies the override
+        // without further refactoring.
+        args.sendUpdates = 'none';
+
+        // Phase 7f structured audit log — one JSON line per write attempt.
+        // Consumed by Phase 9e for daily summarisation.
+        process.stderr.write(JSON.stringify({
+            event: 'write_attempt',
+            tool: 'create-event',
+            calendarId: resolvedCalendarId,
+            account: selectedAccountId,
+            ts: new Date().toISOString(),
+        }) + '\n');
 
         // Validate primary calendar requirement for outOfOffice and workingLocation events
         if (validArgs.eventType === 'outOfOffice' || validArgs.eventType === 'workingLocation') {

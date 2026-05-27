@@ -106,6 +106,19 @@ export class GoogleCalendarMcpServer {
   }
 
   private registerTools(): void {
+    // Phase 7f startup log (PHASE-7F-SPEC.md §3 Patch D).
+    // Emit deployed-surface snapshot to stderr at startup so Phase 9e and any
+    // operator inspection (`journalctl -u openclaw-gateway`) can confirm the
+    // running config without env-var spelunking.
+    process.stderr.write(JSON.stringify({
+      event: 'phase_7f_startup',
+      writeAllowlistPath: process.env.CALENDAR_WRITE_ALLOWLIST_PATH ?? '<default: ~/.openclaw/config/google-calendar/write-allowlist.txt>',
+      bulkEventsEnabled: process.env.CLAUDIA_ENABLE_BULK_EVENTS === 'true',
+      rsvpEnabled: process.env.CLAUDIA_ENABLE_RSVP === 'true',
+      manageAccountsEnabled: process.env.CLAUDIA_ENABLE_MANAGE_ACCOUNTS === 'true',
+      ts: new Date().toISOString(),
+    }) + '\n');
+
     ToolRegistry.registerAll(this.server, this.executeWithHandler.bind(this), this.config);
 
     // Register account management tools separately (they need special context)
