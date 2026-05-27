@@ -23,24 +23,39 @@ export class DeleteEventHandler extends BaseToolHandler {
         // Phase 7f write allowlist — see PHASE-7F-SPEC.md §3 Patch B.
         assertWritable(resolvedCalendarId);
 
-        // Phase 7f: refuse delete on a recurring event without explicit scope.
-        // events.delete with a recurring-parent eventId silently deletes the
-        // entire series — same hazard as UpdateEventHandler's silent-mutate.
-        // DeleteEventInput's schema does not expose modificationScope today;
-        // read it defensively off args in case the schema is extended later,
-        // otherwise refuse on any recurring event.
-        const argScope = (args as any).modificationScope as string | undefined;
-        if (!argScope) {
-            const calendar = this.getCalendar(oauth2Client);
-            const helpers = new RecurringEventHelpers(calendar);
-            const eventType = await helpers.detectEventType(validArgs.eventId, resolvedCalendarId);
-            if (eventType === 'recurring') {
-                throw new Error(
-                    `delete-event on a recurring event requires explicit modificationScope. ` +
-                    `Accepted values: thisEventOnly, thisAndFollowing, all. ` +
-                    `For thisEventOnly, pass the instance event ID (e.g. parentId_YYYYMMDDTHHMMSSZ).`
-                );
-            }
+        // Phase 7f: refuse delete on a recurring event without explicit scope,
+        // and dispatch on the scope value when supplied.
+        // - 'all'           → delete the parent eventId (Google's default behaviour)
+        // - 'thisEventOnly' → compute the instance ID from parent + originalStartTime
+        //                     and delete that instance only
+        // - undefined for a recurring event → REFUSE
+        // - undefined for a single event    → fine, single delete
+        const argScope = (validArgs as any).modificationScope as 'thisEventOnly' | 'all' | undefined;
+        const argOriginalStartTime = (validArgs as any).originalStartTime as string | undefined;
+
+        const calendar = this.getCalendar(oauth2Client);
+        const helpers = new RecurringEventHelpers(calendar);
+        const eventType = await helpers.detectEventType(validArgs.eventId, resolvedCalendarId);
+
+        if (eventType === 'recurring' && !argScope) {
+            throw new Error(
+                `delete-event on a recurring event requires explicit modificationScope. ` +
+                `Accepted values: thisEventOnly, all. ` +
+                `For thisEventOnly, also pass originalStartTime (ISO 8601 of the occurrence).`
+            );
+        }
+
+        if (argScope === 'thisEventOnly' && !argOriginalStartTime) {
+            throw new Error(
+                `delete-event with modificationScope='thisEventOnly' requires originalStartTime ` +
+                `(ISO 8601 timestamp of the specific occurrence to delete).`
+            );
+        }
+
+        // Resolve which event ID we actually delete.
+        let targetEventId = validArgs.eventId;
+        if (eventType === 'recurring' && argScope === 'thisEventOnly') {
+            targetEventId = helpers.formatInstanceId(validArgs.eventId, argOriginalStartTime!);
         }
 
         // Phase 7f: hardcode sendUpdates to 'none'.
@@ -52,19 +67,28 @@ export class DeleteEventHandler extends BaseToolHandler {
             tool: 'delete-event',
             calendarId: resolvedCalendarId,
             account: selectedAccountId,
+            eventType,
             modificationScope: argScope ?? null,
+            targetEventId,
             ts: new Date().toISOString(),
         }) + '\n');
 
-        // Delete the event with resolved calendar ID
-        const argsWithResolvedCalendar = { ...validArgs, calendarId: resolvedCalendarId };
-        await this.deleteEvent(oauth2Client, argsWithResolvedCalendar);
+        // Delete the event with resolved calendar ID + resolved target event ID.
+        await this.deleteEvent(oauth2Client, {
+            ...validArgs,
+            calendarId: resolvedCalendarId,
+            eventId: targetEventId,
+        });
 
         const response: DeleteEventResponse = {
             success: true,
-            eventId: validArgs.eventId,
+            eventId: targetEventId,
             calendarId: resolvedCalendarId,
-            message: "Event deleted successfully"
+            message: argScope === 'thisEventOnly'
+                ? "Single occurrence deleted; rest of the series intact."
+                : eventType === 'recurring'
+                    ? "Entire recurring series deleted."
+                    : "Event deleted successfully",
         };
 
         return createStructuredResponse(response);
@@ -72,7 +96,7 @@ export class DeleteEventHandler extends BaseToolHandler {
 
     private async deleteEvent(
         client: OAuth2Client,
-        args: DeleteEventInput
+        args: DeleteEventInput,
     ): Promise<void> {
         try {
             const calendar = this.getCalendar(client);

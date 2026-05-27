@@ -672,9 +672,16 @@ export const ToolSchemas = {
   'delete-event': z.object({
     account: singleAccountSchema,
     calendarId: z.string().describe("ID of the calendar (use 'primary' for the main calendar)"),
-    eventId: z.string().describe("ID of the event to delete"),
+    eventId: z.string().describe("ID of the event to delete (parent event ID for series / single events; instance ID handled via modificationScope below)"),
     sendUpdates: z.enum(SEND_UPDATES_VALUES).default("all").describe(
-      "Whether to send cancellation notifications"
+      "Whether to send cancellation notifications (Phase 7f hardcodes 'none' regardless)"
+    ),
+    // Phase 7f: recurring-event scope support on delete (mirrors update-event).
+    modificationScope: z.enum(["thisEventOnly", "all"]).optional().describe(
+      "For recurring events: 'thisEventOnly' deletes only the specified occurrence (requires originalStartTime); 'all' deletes the entire series. Required when the event is recurring (Phase 7f hard control). 'thisAndFollowing' is not supported on delete — use update-event with that scope to shorten the series instead."
+    ),
+    originalStartTime: z.string().optional().describe(
+      "Original start time of the specific occurrence (required when modificationScope is 'thisEventOnly'). ISO 8601 e.g. '2026-05-30T09:00:00'."
     )
   }),
 
