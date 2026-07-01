@@ -16,6 +16,7 @@ import {
     convertGoogleEventToStructured
 } from "../../types/structured-responses.js";
 import { assertWritable } from "../../utils/write-allowlist.js";
+import { resolveSendUpdates } from "../../utils/invite-allowlist.js";
 
 export class UpdateEventHandler extends BaseToolHandler {
     private conflictDetectionService: ConflictDetectionService;
@@ -54,10 +55,13 @@ export class UpdateEventHandler extends BaseToolHandler {
             }
         }
 
-        // Phase 7f: hardcode sendUpdates to 'none' across every API call site
-        // in this handler (events.patch at 4 sites + events.insert at the
-        // create-as-exception path). Mutating args here applies to all of them.
-        args.sendUpdates = 'none';
+        // Phase 7f guest-invite (PHASE-7F-GUEST-INVITE-SPEC.md): resolve sendUpdates
+        // from the invite allowlist instead of a blanket 'none'. Applies to every API
+        // call site in this handler (events.patch x4 + the create-as-exception insert),
+        // since they all read args.sendUpdates. 'all' only when every attendee is
+        // allowlisted; any off-list attendee (or missing file) => 'none'.
+        const { sendUpdates: uSendUpdates, skipped: uSkipped } = resolveSendUpdates(args.attendees);
+        args.sendUpdates = uSendUpdates;
 
         // Phase 7f structured audit log.
         process.stderr.write(JSON.stringify({
@@ -66,6 +70,8 @@ export class UpdateEventHandler extends BaseToolHandler {
             calendarId: resolvedCalendarId,
             account: selectedAccountId,
             modificationScope: validArgs.modificationScope ?? null,
+            sendUpdates: uSendUpdates,
+            invitesSkipped: uSkipped,
             ts: new Date().toISOString(),
         }) + '\n');
 
@@ -142,7 +148,15 @@ export class UpdateEventHandler extends BaseToolHandler {
             }
             response.warnings = createWarningsArray(conflicts);
         }
-        
+        // Surface any attendee we did NOT email (off the invite allowlist).
+        if (uSkipped.length > 0) {
+            response.warnings = [
+                ...(response.warnings ?? []),
+                `Not emailed (not on the invite allowlist): ${uSkipped.join(', ')}. ` +
+                `The event was updated but no invitation email was sent to these people.`
+            ];
+        }
+
         return createStructuredResponse(response);
     }
 
