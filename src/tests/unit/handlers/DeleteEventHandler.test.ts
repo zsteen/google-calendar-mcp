@@ -1,7 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { DeleteEventHandler } from '../../../handlers/core/DeleteEventHandler.js';
 import { OAuth2Client } from 'google-auth-library';
 import { CalendarRegistry } from '../../../services/CalendarRegistry.js';
+import { _resetCacheForTests } from '../../../utils/invite-allowlist.js';
 
 // Phase 7f: mock the write-allowlist as a no-op; refusal-path coverage lives in
 // src/tests/unit/utils/write-allowlist.test.ts.
@@ -80,8 +84,7 @@ describe('DeleteEventHandler', () => {
 
       const result = await handler.runTool(args, mockAccounts);
 
-      // Phase 7f contract: sendUpdates is hardcoded to 'none' regardless of input
-      // (including the undefined case).
+      // No attendees on the fetched event → allowlist gate resolves to 'none'.
       expect(mockCalendar.events.delete).toHaveBeenCalledWith({
         calendarId: 'primary',
         eventId: 'event123',
@@ -113,8 +116,8 @@ describe('DeleteEventHandler', () => {
     });
   });
 
-  describe('Send Updates Options (Phase 7f contract: hardcoded to none)', () => {
-    it('forces sendUpdates to none when input is all', async () => {
+  describe('Send Updates Options (no allowlisted guests → none)', () => {
+    it('resolves to none when input is all but the event has no attendees', async () => {
       mockCalendar.events.delete.mockResolvedValue({ data: {} });
 
       const args = {
@@ -132,7 +135,7 @@ describe('DeleteEventHandler', () => {
       });
     });
 
-    it('forces sendUpdates to none when input is externalOnly', async () => {
+    it('resolves to none when input is externalOnly but the event has no attendees', async () => {
       mockCalendar.events.delete.mockResolvedValue({ data: {} });
 
       const args = {
@@ -160,6 +163,69 @@ describe('DeleteEventHandler', () => {
       };
 
       await handler.runTool(args, mockAccounts);
+
+      expect(mockCalendar.events.delete).toHaveBeenCalledWith({
+        calendarId: 'primary',
+        eventId: 'event123',
+        sendUpdates: 'none'
+      });
+    });
+  });
+
+  describe('Cancellation notifications (allowlist-gated)', () => {
+    let allowlistFile: string;
+
+    beforeEach(() => {
+      // Real temp allowlist so resolveSendUpdates() has a file to read.
+      allowlistFile = path.join(os.tmpdir(), `del-invite-allowlist-${process.pid}-${Math.random().toString(36).slice(2)}.txt`);
+      fs.writeFileSync(allowlistFile, 'guest@allowed.com\nsecond@allowed.com\n');
+      process.env.CALENDAR_INVITE_ALLOWLIST_PATH = allowlistFile;
+      _resetCacheForTests();
+    });
+
+    afterEach(() => {
+      delete process.env.CALENDAR_INVITE_ALLOWLIST_PATH;
+      _resetCacheForTests();
+      try { fs.unlinkSync(allowlistFile); } catch { /* ignore */ }
+    });
+
+    it("notifies ('all') when every attendee is on the invite allowlist", async () => {
+      mockCalendar.events.get.mockResolvedValue({
+        data: { id: 'event123', attendees: [{ email: 'guest@allowed.com' }, { email: 'Second@Allowed.com' }] }
+      });
+      mockCalendar.events.delete.mockResolvedValue({ data: {} });
+
+      await handler.runTool({ calendarId: 'primary', eventId: 'event123' }, mockAccounts);
+
+      expect(mockCalendar.events.delete).toHaveBeenCalledWith({
+        calendarId: 'primary',
+        eventId: 'event123',
+        sendUpdates: 'all'
+      });
+    });
+
+    it("stays silent ('none') when any attendee is off the allowlist", async () => {
+      mockCalendar.events.get.mockResolvedValue({
+        data: { id: 'event123', attendees: [{ email: 'guest@allowed.com' }, { email: 'stranger@offlist.com' }] }
+      });
+      mockCalendar.events.delete.mockResolvedValue({ data: {} });
+
+      await handler.runTool({ calendarId: 'primary', eventId: 'event123' }, mockAccounts);
+
+      expect(mockCalendar.events.delete).toHaveBeenCalledWith({
+        calendarId: 'primary',
+        eventId: 'event123',
+        sendUpdates: 'none'
+      });
+    });
+
+    it("honors explicit sendUpdates='none' even when attendees are allowlisted (undo stays silent)", async () => {
+      mockCalendar.events.get.mockResolvedValue({
+        data: { id: 'event123', attendees: [{ email: 'guest@allowed.com' }] }
+      });
+      mockCalendar.events.delete.mockResolvedValue({ data: {} });
+
+      await handler.runTool({ calendarId: 'primary', eventId: 'event123', sendUpdates: 'none' }, mockAccounts);
 
       expect(mockCalendar.events.delete).toHaveBeenCalledWith({
         calendarId: 'primary',

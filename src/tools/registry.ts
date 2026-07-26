@@ -674,7 +674,7 @@ export const ToolSchemas = {
     calendarId: z.string().describe("ID of the calendar (use 'primary' for the main calendar)"),
     eventId: z.string().describe("ID of the event to delete (parent event ID for series / single events; instance ID handled via modificationScope below)"),
     sendUpdates: z.enum(SEND_UPDATES_VALUES).default("all").describe(
-      "Whether to send cancellation notifications (Phase 7f hardcodes 'none' regardless)"
+      "Whether to send cancellation notifications. Invite-allowlist-gated: guests are emailed only when EVERY attendee is Invite-approved; pass 'none' to force silence (e.g. undo)."
     ),
     // Phase 7f: recurring-event scope support on delete (mirrors update-event).
     modificationScope: z.enum(["thisEventOnly", "all"]).optional().describe(

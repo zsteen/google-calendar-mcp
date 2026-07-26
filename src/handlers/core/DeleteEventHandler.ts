@@ -6,6 +6,7 @@ import { DeleteEventResponse } from "../../types/structured-responses.js";
 import { createStructuredResponse } from "../../utils/response-builder.js";
 import { RecurringEventHelpers } from './RecurringEventHelpers.js';
 import { assertWritable } from "../../utils/write-allowlist.js";
+import { resolveSendUpdates } from "../../utils/invite-allowlist.js";
 
 export class DeleteEventHandler extends BaseToolHandler {
     async runTool(args: any, accounts: Map<string, OAuth2Client>): Promise<CallToolResult> {
@@ -90,10 +91,23 @@ export class DeleteEventHandler extends BaseToolHandler {
             }
         }
 
-        // Phase 7f: hardcode sendUpdates to 'none'.
-        args.sendUpdates = 'none';
+        // Cancellation notifications (2026-07-26): notify guests on a genuine
+        // cancel, but ONLY through the same invite-allowlist gate that create/
+        // update use — Google is emailed 'all' only when EVERY attendee is
+        // Invite-approved, else 'none' (never email an off-list address). An
+        // explicit sendUpdates='none' is always honoured, so the undo-window
+        // flow (which passes 'none') stays silent even for an allowlisted guest.
+        // Supersedes the earlier Phase 7f blanket 'none' hardcode.
+        let notifySkipped: string[] = [];
+        if (validArgs.sendUpdates === 'none') {
+            args.sendUpdates = 'none';
+        } else {
+            const r = resolveSendUpdates(event.attendees);
+            args.sendUpdates = r.sendUpdates;
+            notifySkipped = r.skipped;
+        }
 
-        // Phase 7f structured audit log.
+        // Structured audit log (extends the Phase 7f write-attempt record).
         process.stderr.write(JSON.stringify({
             event: 'write_attempt',
             tool: 'delete-event',
@@ -106,6 +120,8 @@ export class DeleteEventHandler extends BaseToolHandler {
             resolution,
             inputEventId: validArgs.eventId,
             targetEventId,
+            sendUpdates: args.sendUpdates,
+            notifySkipped,
             ts: new Date().toISOString(),
         }) + '\n');
 
