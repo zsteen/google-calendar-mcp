@@ -110,4 +110,21 @@ describe('Phase 7f — resolveSendUpdates', () => {
         expect(r.sendUpdates).toBe('none');
         expect(r.skipped).toEqual(['bruce@example.com']);
     });
+
+    // Regression (2026-08-03): Google returns the calendar owner as an attendee on
+    // every fetched event, and DeleteEventHandler gates on that list -- counting the
+    // owner as a guest suppressed EVERY cancellation email.
+    it('ignores the calendar owner Google echoes back (self/organizer)', () => {
+        const r = resolveSendUpdates([
+            { email: 'bruce@example.com' },
+            { email: 'owner@gmail.com', organizer: true, self: true },
+            { email: 'zig@rmb.co.za' },
+        ]);
+        expect(r).toEqual({ sendUpdates: 'all', skipped: [] });
+    });
+
+    it('owner-only attendee list => none (no guests to notify)', () => {
+        const r = resolveSendUpdates([{ email: 'owner@gmail.com', organizer: true, self: true }]);
+        expect(r).toEqual({ sendUpdates: 'none', skipped: [] });
+    });
 });

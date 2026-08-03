@@ -62,17 +62,29 @@ export type SendUpdatesSetting = 'all' | 'none';
 /**
  * Decide the Google `sendUpdates` value for a set of attendees.
  *
- * Returns 'all' (notify every guest) ONLY when there is at least one attendee
- * AND every attendee's email is on the invite allowlist. If ANY attendee is
- * off-list (or has no parseable email), returns 'none' and lists the off-list
- * addresses in `skipped` so the caller can surface "I did not email X".
+ * Returns 'all' (notify every guest) ONLY when there is at least one GUEST
+ * attendee AND every guest's email is on the invite allowlist. The calendar
+ * owner (`self` / `organizer`) is NOT a guest and is excluded before the check
+ * -- Google adds the owner to the attendee list of every event it returns. If
+ * ANY guest is off-list (or has no parseable email), returns 'none' and lists
+ * the off-list addresses in `skipped` so the caller can surface "I did not
+ * email X".
  *
  * Never throws — a bad allowlist file degrades to 'none' (email nobody).
  */
 export function resolveSendUpdates(
-    attendees?: Array<{ email?: string | null }> | null
+    attendees?: Array<{ email?: string | null; self?: boolean | null; organizer?: boolean | null }> | null
 ): { sendUpdates: SendUpdatesSetting; skipped: string[] } {
-    const list = attendees ?? [];
+    // Drop the calendar owner before checking. Google echoes the owner back as an
+    // attendee on every event it returns (`self: true`, plus `organizer: true` on
+    // events they own), and DeleteEventHandler gates on that FETCHED list -- so the
+    // owner's own address was being judged as if it were a guest. It is not on the
+    // invite allowlist (that file lists people we may EMAIL), so every cancellation
+    // resolved to 'none' and went out silently. The owner cannot be spammed by their
+    // own event and Google never emails them as a guest, so they are not part of the
+    // notification decision. Create/update pass caller-supplied attendees, which
+    // carry no self/organizer flags -- unaffected.
+    const list = (attendees ?? []).filter(a => a?.self !== true && a?.organizer !== true);
     if (list.length === 0) {
         return { sendUpdates: 'none', skipped: [] };
     }
