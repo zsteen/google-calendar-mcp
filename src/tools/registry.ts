@@ -673,9 +673,16 @@ export const ToolSchemas = {
   'delete-event': z.object({
     account: singleAccountSchema,
     calendarId: z.string().describe("ID of the calendar (use 'primary' for the main calendar)"),
-    eventId: z.string().describe("ID of the event to delete"),
+    eventId: z.string().describe("ID of the event to delete (parent event ID for series / single events; instance ID handled via modificationScope below)"),
     sendUpdates: z.enum(SEND_UPDATES_VALUES).default("all").describe(
-      "Whether to send cancellation notifications"
+      "Whether to send cancellation notifications. Invite-allowlist-gated: guests are emailed only when EVERY attendee is Invite-approved; pass 'none' to force silence (e.g. undo)."
+    ),
+    // Phase 7f: recurring-event scope support on delete (mirrors update-event).
+    modificationScope: z.enum(["thisEventOnly", "all"]).optional().describe(
+      "For recurring events: 'thisEventOnly' deletes only the specified occurrence (requires originalStartTime); 'all' deletes the entire series. Required when the event is recurring (Phase 7f hard control). 'thisAndFollowing' is not supported on delete — use update-event with that scope to shorten the series instead."
+    ),
+    originalStartTime: z.string().optional().describe(
+      "Original start time of the specific occurrence (required when modificationScope is 'thisEventOnly'). ISO 8601 e.g. '2026-05-30T09:00:00'."
     )
   }),
 
@@ -1064,6 +1071,32 @@ export class ToolRegistry {
         `Available tools: ${available}`
       );
     }
+
+    // Phase 7f denylist (PHASE-7F-SPEC.md §3 Patch C):
+    //   create-events     — bulk create; Tier-4 propose-confirm doesn't compose
+    //                       cleanly with batch writes.
+    //   respond-to-event  — RSVP to external invitations; different security
+    //                       envelope (sends Accept/Decline to organizers).
+    //
+    // These tools are physically excluded from the registry's enable set. Adding
+    // either to ENABLED_TOOLS throws here so the misconfiguration is loud, not
+    // silent. To re-enable (e.g. for a future batch-write feature), set the
+    // corresponding env flag below and read the relevant follow-up in the spec.
+    const phase7fBlocked: { name: string; flag: string }[] = [
+      { name: 'create-events', flag: 'CLAUDIA_ENABLE_BULK_EVENTS' },
+      { name: 'respond-to-event', flag: 'CLAUDIA_ENABLE_RSVP' },
+    ];
+    const blockedRequested = phase7fBlocked.filter(
+      b => toolNames.includes(b.name) && process.env[b.flag] !== 'true',
+    );
+    if (blockedRequested.length > 0) {
+      const messages = blockedRequested.map(b =>
+        `'${b.name}' (re-enable via ${b.flag}=true; see PHASE-7F-SPEC.md §9 follow-ups)`,
+      );
+      throw new Error(
+        `Tool(s) blocked by Phase 7f denylist: ${messages.join(', ')}.`,
+      );
+    }
   }
 
   static async registerAll(
@@ -1074,6 +1107,14 @@ export class ToolRegistry {
     ) => Promise<{ content: Array<{ type: "text"; text: string }> }>,
     config?: ServerConfig
   ) {
+    // Phase 7f denylist — see validateToolNames above. We filter in registerAll
+    // too so a "no filtering" config (no ENABLED_TOOLS) ALSO excludes these
+    // tools rather than re-exposing them by accident.
+    const phase7fBlocked = new Set<string>([
+      ...(process.env.CLAUDIA_ENABLE_BULK_EVENTS === 'true' ? [] : ['create-events']),
+      ...(process.env.CLAUDIA_ENABLE_RSVP === 'true' ? [] : ['respond-to-event']),
+    ]);
+
     // Validate enabledTools if provided
     if (config?.enabledTools) {
       if (config.enabledTools.length === 0) {
@@ -1088,13 +1129,21 @@ export class ToolRegistry {
         if (!enabledSet.has(tool.name)) {
           continue;
         }
+        if (phase7fBlocked.has(tool.name)) {
+          process.stderr.write(`Phase 7f denylist: skipping ${tool.name}\n`);
+          continue;
+        }
         this.registerSingleTool(server, tool, executeWithHandler);
       }
       return;
     }
 
-    // No filtering - register all tools
+    // No filtering - register all tools except Phase 7f denylist
     for (const tool of this.tools) {
+      if (phase7fBlocked.has(tool.name)) {
+        process.stderr.write(`Phase 7f denylist: skipping ${tool.name}\n`);
+        continue;
+      }
       this.registerSingleTool(server, tool, executeWithHandler);
     }
   }

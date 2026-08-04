@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ToolRegistry, ToolSchemas } from '../../../tools/registry.js';
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -21,9 +21,15 @@ describe('Tool Registration', () => {
   }>;
 
   beforeEach(() => {
+    // Phase 7f denylist filters create-events and respond-to-event by default.
+    // These tests validate the FULL upstream registration shape, so open both
+    // env gates first; afterEach restores the default.
+    process.env.CLAUDIA_ENABLE_BULK_EVENTS = 'true';
+    process.env.CLAUDIA_ENABLE_RSVP = 'true';
+
     mockServer = new McpServer({ name: 'test', version: '1.0.0' });
     registeredTools = [];
-    
+
     // Mock the registerTool method to capture registered tools
     mockServer.registerTool = vi.fn((name: string, definition: any, _handler: any) => {
       registeredTools.push({
@@ -36,6 +42,11 @@ describe('Tool Registration', () => {
       // Return a mock RegisteredTool
       return { name, description: definition.description } as any;
     });
+  });
+
+  afterEach(() => {
+    delete process.env.CLAUDIA_ENABLE_BULK_EVENTS;
+    delete process.env.CLAUDIA_ENABLE_RSVP;
   });
 
   it('should register all tools successfully without errors', async () => {

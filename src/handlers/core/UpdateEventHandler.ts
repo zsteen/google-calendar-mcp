@@ -11,10 +11,12 @@ import {
     convertConflictsToStructured,
     createWarningsArray
 } from "../../utils/response-builder.js";
-import { 
+import {
     UpdateEventResponse,
-    convertGoogleEventToStructured 
+    convertGoogleEventToStructured
 } from "../../types/structured-responses.js";
+import { assertWritable } from "../../utils/write-allowlist.js";
+import { resolveSendUpdates } from "../../utils/invite-allowlist.js";
 
 export class UpdateEventHandler extends BaseToolHandler {
     private conflictDetectionService: ConflictDetectionService;
@@ -30,6 +32,48 @@ export class UpdateEventHandler extends BaseToolHandler {
         // Setup write operation: get client, calendar API, and resolve calendar name to ID
         const { client: oauth2Client, calendar, accountId: selectedAccountId, calendarId: resolvedCalendarId } =
             await this.setupOperation(args.account, validArgs.calendarId, accounts, 'write');
+
+        // Phase 7f write allowlist — see PHASE-7F-SPEC.md §3 Patch B.
+        assertWritable(resolvedCalendarId);
+
+        // Phase 7f: refuse update on a recurring event without explicit scope.
+        // The upstream schema makes modificationScope optional and the handler
+        // defaults undefined → 'all' (silently mutates the whole series). That
+        // is load-bearing here, not belt-and-braces: a forgotten scope WILL
+        // destroy an unintended series. Detect via RecurringEventHelpers
+        // (uses events.get under the hood — same lookup the existing flow
+        // performs in updateEventWithScope, paid once).
+        if (!validArgs.modificationScope) {
+            const helpers = new RecurringEventHelpers(calendar);
+            const eventType = await helpers.detectEventType(validArgs.eventId, resolvedCalendarId);
+            if (eventType === 'recurring') {
+                throw new Error(
+                    `update-event on a recurring event requires explicit modificationScope. ` +
+                    `Accepted values: thisEventOnly, thisAndFollowing, all. ` +
+                    `See AGENTS.md Phase 7f block for propose semantics.`
+                );
+            }
+        }
+
+        // Phase 7f guest-invite (PHASE-7F-GUEST-INVITE-SPEC.md): resolve sendUpdates
+        // from the invite allowlist instead of a blanket 'none'. Applies to every API
+        // call site in this handler (events.patch x4 + the create-as-exception insert),
+        // since they all read args.sendUpdates. 'all' only when every attendee is
+        // allowlisted; any off-list attendee (or missing file) => 'none'.
+        const { sendUpdates: uSendUpdates, skipped: uSkipped } = resolveSendUpdates(args.attendees);
+        args.sendUpdates = uSendUpdates;
+
+        // Phase 7f structured audit log.
+        process.stderr.write(JSON.stringify({
+            event: 'write_attempt',
+            tool: 'update-event',
+            calendarId: resolvedCalendarId,
+            account: selectedAccountId,
+            modificationScope: validArgs.modificationScope ?? null,
+            sendUpdates: uSendUpdates,
+            invitesSkipped: uSkipped,
+            ts: new Date().toISOString(),
+        }) + '\n');
 
         // Fetch existing event if needed for conflict checking or attendees merge
         const needsExistingEvent =
@@ -104,7 +148,15 @@ export class UpdateEventHandler extends BaseToolHandler {
             }
             response.warnings = createWarningsArray(conflicts);
         }
-        
+        // Surface any attendee we did NOT email (off the invite allowlist).
+        if (uSkipped.length > 0) {
+            response.warnings = [
+                ...(response.warnings ?? []),
+                `Not emailed (not on the invite allowlist): ${uSkipped.join(', ')}. ` +
+                `The event was updated but no invitation email was sent to these people.`
+            ];
+        }
+
         return createStructuredResponse(response);
     }
 

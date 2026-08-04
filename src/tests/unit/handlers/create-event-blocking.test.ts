@@ -5,6 +5,11 @@ import { calendar_v3 } from 'googleapis';
 import { CONFLICT_DETECTION_CONFIG } from '../../../services/conflict-detection/config.js';
 import { CalendarRegistry } from '../../../services/CalendarRegistry.js';
 
+// Phase 7f: mock write-allowlist as no-op for blocking-logic shape tests.
+vi.mock('../../../utils/write-allowlist.js', () => ({
+  assertWritable: vi.fn(),
+}));
+
 describe('CreateEventHandler Blocking Logic', () => {
   const mockOAuth2Client = {
     getAccessToken: vi.fn().mockResolvedValue({ token: 'mock-token' })

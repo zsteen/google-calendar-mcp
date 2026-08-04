@@ -9,6 +9,8 @@ import { ConflictDetectionService } from "../../services/conflict-detection/inde
 import { CONFLICT_DETECTION_CONFIG } from "../../services/conflict-detection/config.js";
 import { createStructuredResponse, convertConflictsToStructured, createWarningsArray } from "../../utils/response-builder.js";
 import { CreateEventResponse, convertGoogleEventToStructured } from "../../types/structured-responses.js";
+import { assertWritable } from "../../utils/write-allowlist.js";
+import { resolveSendUpdates } from "../../utils/invite-allowlist.js";
 
 export class CreateEventHandler extends BaseToolHandler {
     private conflictDetectionService: ConflictDetectionService;
@@ -29,6 +31,32 @@ export class CreateEventHandler extends BaseToolHandler {
             accounts,
             'write'
         );
+
+        // Phase 7f write allowlist — refuse any calendar outside the allowlist.
+        // Check runs AFTER name resolution so a name resolving to an out-of-allowlist
+        // ID is still refused. See PHASE-7F-SPEC.md §3 Patch B.
+        assertWritable(resolvedCalendarId);
+
+        // Phase 7f guest-invite (PHASE-7F-GUEST-INVITE-SPEC.md): decide sendUpdates
+        // from the invite allowlist instead of a blanket 'none'. 'all' (email every
+        // guest) ONLY when every attendee is allowlisted; any off-list attendee =>
+        // 'none' (create the event, email nobody) with the addresses in `skipped`.
+        // Fail-safe: a missing allowlist file => 'none'. The downstream events.insert
+        // call reads args.sendUpdates, so mutating args here applies the decision.
+        const { sendUpdates: cSendUpdates, skipped: cSkipped } = resolveSendUpdates(args.attendees);
+        args.sendUpdates = cSendUpdates;
+
+        // Phase 7f structured audit log — one JSON line per write attempt.
+        // Consumed by Phase 9e for daily summarisation.
+        process.stderr.write(JSON.stringify({
+            event: 'write_attempt',
+            tool: 'create-event',
+            calendarId: resolvedCalendarId,
+            account: selectedAccountId,
+            sendUpdates: cSendUpdates,
+            invitesSkipped: cSkipped,
+            ts: new Date().toISOString(),
+        }) + '\n');
 
         // Validate primary calendar requirement for outOfOffice and workingLocation events
         if (validArgs.eventType === 'outOfOffice' || validArgs.eventType === 'workingLocation') {
@@ -85,11 +113,20 @@ export class CreateEventHandler extends BaseToolHandler {
 
         // Generate structured response with conflict warnings
         const structuredConflicts = convertConflictsToStructured(conflicts);
+        const warnings = createWarningsArray(conflicts) ?? [];
+        // Surface any attendee we did NOT email (off the invite allowlist) so Claudia
+        // can tell the user "created, but I did not email X" rather than silently dropping it.
+        if (cSkipped.length > 0) {
+            warnings.push(
+                `Not emailed (not on the invite allowlist): ${cSkipped.join(', ')}. ` +
+                `The event was created and these people were added as guests, but no invitation email was sent to them.`
+            );
+        }
         const response: CreateEventResponse = {
             event: convertGoogleEventToStructured(event, resolvedCalendarId, selectedAccountId),
             conflicts: structuredConflicts.conflicts,
             duplicates: structuredConflicts.duplicates,
-            warnings: createWarningsArray(conflicts)
+            warnings
         };
 
         return createStructuredResponse(response);
