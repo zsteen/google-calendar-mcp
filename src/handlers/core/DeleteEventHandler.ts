@@ -8,6 +8,10 @@ import { RecurringEventHelpers } from './RecurringEventHelpers.js';
 import { assertWritable } from "../../utils/write-allowlist.js";
 import { resolveSendUpdates } from "../../utils/invite-allowlist.js";
 
+// A real undo happens seconds after the create; 2x the 60s undo window used elsewhere
+// (phase-11b DEFAULT_UNDO_WINDOW_SECONDS) to allow for confirm latency.
+const DELETE_UNDO_WINDOW_SECONDS = 120;
+
 export class DeleteEventHandler extends BaseToolHandler {
     async runTool(args: any, accounts: Map<string, OAuth2Client>): Promise<CallToolResult> {
         const validArgs = args as DeleteEventInput;
@@ -98,13 +102,34 @@ export class DeleteEventHandler extends BaseToolHandler {
         // explicit sendUpdates='none' is always honoured, so the undo-window
         // flow (which passes 'none') stays silent even for an allowlisted guest.
         // Supersedes the earlier Phase 7f blanket 'none' hardcode.
-        let notifySkipped: string[] = [];
-        if (validArgs.sendUpdates === 'none') {
+        // TIGHTENED 2026-08-04. An explicit sendUpdates='none' is honoured ONLY for a genuine
+        // UNDO — an event created moments ago (AGENTS.md's undo block deletes a just-made save
+        // with sendUpdates='none'). Outside that window the allowlist wins and the caller's
+        // 'none' is overridden.
+        //
+        // Why: Zig cancelled Eva's hockey match. Claudia passed sendUpdates='none', generalising
+        // the undo instruction to a real cancellation, which short-circuited the allowlist. The
+        // event vanished from Google but the guests -- Zig's RMB work calendar AND Bruce, both
+        // Invite-approved -- were never told, so they kept a stale commitment. The "hard control"
+        // the docs advertise was not one: any caller could silence it.
+        // Proven by two audit lines minutes apart: sendUpdates 'all' (manual) delivered the
+        // cancellation; sendUpdates 'none' (Claudia) did not.
+        const createdMs = event.created ? Date.parse(event.created) : NaN;
+        const withinUndoWindow = Number.isFinite(createdMs)
+            && (Date.now() - createdMs) <= DELETE_UNDO_WINDOW_SECONDS * 1000;
+        const r = resolveSendUpdates(event.attendees);
+        let notifySkipped: string[] = r.skipped;
+        let notifyOverride: string | null = null;
+        if (validArgs.sendUpdates === 'none' && withinUndoWindow) {
+            args.sendUpdates = 'none';
+            notifyOverride = 'undo_window';
+        } else if (validArgs.sendUpdates === 'none' && r.sendUpdates === 'all') {
+            args.sendUpdates = 'all';
+            notifyOverride = 'caller_none_overridden_outside_undo_window';
+        } else if (validArgs.sendUpdates === 'none') {
             args.sendUpdates = 'none';
         } else {
-            const r = resolveSendUpdates(event.attendees);
             args.sendUpdates = r.sendUpdates;
-            notifySkipped = r.skipped;
         }
 
         // Structured audit log (extends the Phase 7f write-attempt record).
@@ -122,6 +147,7 @@ export class DeleteEventHandler extends BaseToolHandler {
             targetEventId,
             sendUpdates: args.sendUpdates,
             notifySkipped,
+            notifyOverride,
             ts: new Date().toISOString(),
         }) + '\n');
 
