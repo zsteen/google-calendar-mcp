@@ -219,9 +219,16 @@ describe('DeleteEventHandler', () => {
       });
     });
 
-    it("honors explicit sendUpdates='none' even when attendees are allowlisted (undo stays silent)", async () => {
+    // A caller-supplied 'none' is an exception for ONE case: undo of a save nobody
+    // has seen yet. Before 2026-08-04 it was honoured unconditionally, which meant a
+    // genuine cancellation notified nobody. These three tests pin the narrowed rule.
+    it("honors explicit sendUpdates='none' INSIDE the 120s undo window (undo stays silent)", async () => {
       mockCalendar.events.get.mockResolvedValue({
-        data: { id: 'event123', attendees: [{ email: 'guest@allowed.com' }] }
+        data: {
+          id: 'event123',
+          attendees: [{ email: 'guest@allowed.com' }],
+          created: new Date().toISOString()   // just created -> this IS an undo
+        }
       });
       mockCalendar.events.delete.mockResolvedValue({ data: {} });
 
@@ -231,6 +238,40 @@ describe('DeleteEventHandler', () => {
         calendarId: 'primary',
         eventId: 'event123',
         sendUpdates: 'none'
+      });
+    });
+
+    it("OVERRIDES explicit sendUpdates='none' outside the undo window (a real cancellation must reach guests)", async () => {
+      mockCalendar.events.get.mockResolvedValue({
+        data: {
+          id: 'event123',
+          attendees: [{ email: 'guest@allowed.com' }],
+          created: new Date(Date.now() - 10 * 60 * 1000).toISOString()  // 10 min old
+        }
+      });
+      mockCalendar.events.delete.mockResolvedValue({ data: {} });
+
+      await handler.runTool({ calendarId: 'primary', eventId: 'event123', sendUpdates: 'none' }, mockAccounts);
+
+      expect(mockCalendar.events.delete).toHaveBeenCalledWith({
+        calendarId: 'primary',
+        eventId: 'event123',
+        sendUpdates: 'all'
+      });
+    });
+
+    it("OVERRIDES explicit sendUpdates='none' when the event has no created timestamp (fail-safe: notify)", async () => {
+      mockCalendar.events.get.mockResolvedValue({
+        data: { id: 'event123', attendees: [{ email: 'guest@allowed.com' }] }  // no `created`
+      });
+      mockCalendar.events.delete.mockResolvedValue({ data: {} });
+
+      await handler.runTool({ calendarId: 'primary', eventId: 'event123', sendUpdates: 'none' }, mockAccounts);
+
+      expect(mockCalendar.events.delete).toHaveBeenCalledWith({
+        calendarId: 'primary',
+        eventId: 'event123',
+        sendUpdates: 'all'
       });
     });
   });
