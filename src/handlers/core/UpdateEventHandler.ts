@@ -17,6 +17,7 @@ import {
 } from "../../types/structured-responses.js";
 import { assertWritable } from "../../utils/write-allowlist.js";
 import { resolveSendUpdates } from "../../utils/invite-allowlist.js";
+import { pokeTripFeed } from "./tripFeedStamp.js";
 
 export class UpdateEventHandler extends BaseToolHandler {
     private conflictDetectionService: ConflictDetectionService;
@@ -134,6 +135,7 @@ export class UpdateEventHandler extends BaseToolHandler {
 
         // Update the event with resolved calendar ID and merged attendees
         const event = await this.updateEventWithScope(oauth2Client, argsWithMergedAttendees);
+        pokeTripFeed(event.id);
 
         // Create structured response
         const response: UpdateEventResponse = {

@@ -11,6 +11,7 @@ import { createStructuredResponse, convertConflictsToStructured, createWarningsA
 import { CreateEventResponse, convertGoogleEventToStructured } from "../../types/structured-responses.js";
 import { assertWritable } from "../../utils/write-allowlist.js";
 import { resolveSendUpdates } from "../../utils/invite-allowlist.js";
+import { stampClaudia, pokeTripFeed } from "./tripFeedStamp.js";
 
 export class CreateEventHandler extends BaseToolHandler {
     private conflictDetectionService: ConflictDetectionService;
@@ -182,6 +183,8 @@ export class CreateEventHandler extends BaseToolHandler {
                 ...(args.eventType === 'workingLocation' && { workingLocationProperties: this.buildWorkingLocationProperties(args) })
             };
             
+            stampClaudia(requestBody);
+
             // Determine if we need to enable conference data or attachments
             const conferenceDataVersion = args.conferenceData ? 1 : undefined;
             const supportsAttachments = args.attachments ? true : undefined;
@@ -195,6 +198,7 @@ export class CreateEventHandler extends BaseToolHandler {
             });
             
             if (!response.data) throw new Error('Failed to create event, no data returned');
+            pokeTripFeed(response.data.id);
             return response.data;
         } catch (error: any) {
             // Handle ID conflict errors specifically

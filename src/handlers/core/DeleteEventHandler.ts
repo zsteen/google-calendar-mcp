@@ -7,6 +7,7 @@ import { createStructuredResponse } from "../../utils/response-builder.js";
 import { RecurringEventHelpers } from './RecurringEventHelpers.js';
 import { assertWritable } from "../../utils/write-allowlist.js";
 import { resolveSendUpdates } from "../../utils/invite-allowlist.js";
+import { pokeTripFeed } from "./tripFeedStamp.js";
 
 // A real undo happens seconds after the create; 2x the 60s undo window used elsewhere
 // (phase-11b DEFAULT_UNDO_WINDOW_SECONDS) to allow for confirm latency.
@@ -193,6 +194,7 @@ export class DeleteEventHandler extends BaseToolHandler {
                 eventId: args.eventId,
                 sendUpdates: args.sendUpdates,
             });
+            pokeTripFeed(args.eventId);
         } catch (error) {
             throw this.handleGoogleApiError(error);
         }
