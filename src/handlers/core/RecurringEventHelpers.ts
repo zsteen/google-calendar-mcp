@@ -1,6 +1,7 @@
 import { calendar_v3 } from 'googleapis';
 import { createTimeObject } from '../../utils/datetime.js';
 import { stampClaudia } from "./tripFeedStamp.js";
+import { applyWriteEnvelope } from "./calendarEnvelope.js";
 
 export class RecurringEventHelpers {
   private calendar: calendar_v3.Calendar;
@@ -136,6 +137,10 @@ export class RecurringEventHelpers {
     if (args.anyoneCanAddSelf !== undefined && args.anyoneCanAddSelf !== null) requestBody.anyoneCanAddSelf = args.anyoneCanAddSelf;
     if (args.extendedProperties !== undefined && args.extendedProperties !== null) requestBody.extendedProperties = args.extendedProperties;
     stampClaudia(requestBody);
+    // Phase 0 write gate: normalise -> ensure envelope -> validate.
+    // AFTER stampClaudia, never before: ensureEnvelope is fill-if-absent,
+    // so the Trip Feed stamp survives only if it is already present.
+    applyWriteEnvelope(requestBody);
     if (args.attachments !== undefined && args.attachments !== null) requestBody.attachments = args.attachments;
     if (args.eventType !== undefined && args.eventType !== null) requestBody.eventType = args.eventType;
 
