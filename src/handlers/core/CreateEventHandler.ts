@@ -12,6 +12,8 @@ import { CreateEventResponse, convertGoogleEventToStructured } from "../../types
 import { assertWritable } from "../../utils/write-allowlist.js";
 import { resolveSendUpdates } from "../../utils/invite-allowlist.js";
 import { stampClaudia, pokeTripFeed } from "./tripFeedStamp.js";
+import { applyWriteEnvelope } from "./calendarEnvelope.js";
+import { ACTION_ADOPT, ACTION_AMBIGUOUS, ACTION_NOOP, ACTION_PATCH, ACTION_SUPPRESSED, contentHash, decideOnConflict, decideOnKeyMatch, deriveIdFromBody, isIdempotentWrite } from "./calendarIdempotency.js";
 
 export class CreateEventHandler extends BaseToolHandler {
     private conflictDetectionService: ConflictDetectionService;
@@ -99,7 +101,18 @@ export class CreateEventHandler extends BaseToolHandler {
             dup => dup.event.similarity >= CONFLICT_DETECTION_CONFIG.DUPLICATE_THRESHOLDS.BLOCKING
         );
 
-        if (exactDuplicate && validArgs.allowDuplicates !== true) {
+        // D1 (task 1.10): skip the fuzzy check when the id will be DERIVED.
+        //
+        // Similarity matching is a fallback for writes whose id the server
+        // assigns — it guesses at duplication because nothing else can. Once the
+        // id comes from the row, the API enforces uniqueness EXACTLY and the 409
+        // branch decides correctly (no-op / converge / suppress). Leaving the
+        // guess in front of it is not just redundant: at 95% it fires before the
+        // branch can run, so a source document that changes slightly gets its
+        // convergence patch BLOCKED and reported as a duplicate instead.
+        const idempotent = isIdempotentWrite(validArgs.extendedProperties, validArgs.eventId);
+
+        if (exactDuplicate && !idempotent && validArgs.allowDuplicates !== true) {
             // Throw an error that will be handled by MCP SDK
             throw new Error(
                 `Duplicate event detected (${Math.round(exactDuplicate.event.similarity * 100)}% similar). ` +
@@ -137,8 +150,15 @@ export class CreateEventHandler extends BaseToolHandler {
         client: OAuth2Client,
         args: CreateEventInput
     ): Promise<calendar_v3.Schema$Event> {
+        let calendarUsed: any = null;
+        let derivedIdUsed: string | null = null;
+        let desiredHashUsed: string | null = null;
+        let bodyUsed: any = null;
         try {
-            const calendar = this.getCalendar(client);
+            // Hoisted out of the try below: the 409 branch in the catch needs it
+            // to read back the event that already exists.
+            calendarUsed = this.getCalendar(client);
+            const calendar = calendarUsed;
             
             // Validate custom event ID if provided
             if (args.eventId) {
@@ -184,11 +204,135 @@ export class CreateEventHandler extends BaseToolHandler {
             };
             
             stampClaudia(requestBody);
+            // Phase 0 write gate: normalise -> ensure envelope -> validate.
+            // AFTER stampClaudia, never before: ensureEnvelope is fill-if-absent,
+            // so the Trip Feed stamp survives only if it is already present.
+            // The create-only gate additionally REQUIRES a real claudia_source.
+            // Measured 2026-09-15 (tracker C26): a real agent ingest wrote 22
+            // events all carrying the generic default, so none took a derived id
+            // and re-running the document would have duplicated all 22. The rule
+            // had been written in the calendar-write skill since 2026-09-14 and
+            // was simply not followed — an instruction is not an enforcement.
+            //
+            // Behind a switch, and defaulting OFF, for two measured reasons.
+            // (1) `create-event` is a general MCP tool: making the rule
+            // unconditional turned 29 of this repo's own upstream tests red,
+            // tests that know nothing about Claudia. (2) This writes to a live
+            // family calendar, so a misfire means Claudia cannot create events
+            // at all; one config value and a restart beats a rebuild when that
+            // is the failure you are recovering from.
+            //
+            // Updates are never subject to it: they address an existing row by
+            // id, and the source is only ever used to derive an id at insert.
+            const requireCreateSource = process.env.CALENDAR_REQUIRE_CREATE_SOURCE === '1';
+            applyWriteEnvelope(requestBody, undefined, { isCreate: requireCreateSource });
+
+            // D1: derive the event id from the row rather than letting the
+            // server assign one. Done AFTER the envelope, so the hash covers
+            // the normalised body and stays stable across re-ingests.
+            // No-op unless the payload names a real claudia_source — callers
+            // that have not opted in keep server-assigned ids.
+            const derived = deriveIdFromBody(requestBody, args.eventId);
+            const desiredHash = derived ? contentHash(requestBody) : null;
+            bodyUsed = requestBody;
+            if (derived) {
+                derivedIdUsed = derived.eventId;
+                desiredHashUsed = desiredHash;
+                requestBody.id = derived.eventId;
+                const priv = (requestBody.extendedProperties!.private ?? {}) as Record<string, string>;
+                priv.claudia_natural_key = derived.naturalKey;
+                priv.claudia_key_version = derived.keyVersion;
+                priv.claudia_content_hash = desiredHash!;
+            }
+
+            // 1.12: THE ADOPTION PATH. A Calendar event id is fixed at insert
+            // and cannot be changed, so every row written before Phase 1 carries
+            // a server-assigned id it can never trade for a derived one. Insert
+            // alone therefore CANNOT converge onto it: the derived id does not
+            // exist, the insert returns 201, the 409 branch never fires, and the
+            // calendar ends with two copies. That is the exact defect D1
+            // prevents, arriving through the one door D1 does not cover (C23).
+            //
+            // `claudia_natural_key` is queryable server-side, so the key finds
+            // the row the id cannot. Only runs when the write is idempotent, so
+            // every caller that has not opted in is untouched — which is also
+            // why this adds no list call to the general `create-event` path.
+            //
+            // NOT the read-before-write D1 rejected: that rejection is about
+            // duplicate PREVENTION, where a read narrows the race without
+            // closing it. The derived id and the 409 branch remain the only
+            // authority on races. If this lookup races and loses, the insert
+            // still lands on the derived id and the 409 branch still decides.
+            //
+            // FAILS OPEN, deliberately. If the lookup errors we fall through to
+            // the insert — i.e. exactly today's behaviour, which risks a
+            // duplicate. Failing closed would mean a Calendar read blip stops
+            // Claudia writing at all, and the person who finds out is Zig.
+            if (derived) {
+                let keyMatches: any[] | null = null;
+                try {
+                    const found = await calendar.events.list({
+                        calendarId: args.calendarId,
+                        privateExtendedProperty: [`claudia_natural_key=${derived.naturalKey}`],
+                        showDeleted: true,     // a deleted row must not be re-created under a new id
+                        singleEvents: false,   // masters, not occurrences (invariant 5)
+                        maxResults: 10,
+                    });
+                    keyMatches = found.data.items ?? [];
+                } catch (lookupError: any) {
+                    process.stderr.write(JSON.stringify({
+                        event: 'key_lookup_failed', natural_key: derived.naturalKey,
+                        error: String(lookupError?.message ?? lookupError),
+                        note: 'falling through to insert (pre-1.12 behaviour)',
+                    }) + '\n');
+                }
+
+                if (keyMatches !== null) {
+                    const { action, targetId } =
+                        decideOnKeyMatch(keyMatches, desiredHash!, derived.eventId);
+
+                    if (action === ACTION_AMBIGUOUS) {
+                        throw new Error(
+                            `Natural key '${derived.naturalKey}' is claimed by ${keyMatches.length} ` +
+                            `events. Not guessing which one to patch — key_v1 excludes times, so two ` +
+                            `distinct events on one date with one title share a key. Give one a ` +
+                            `claudia_section, or reconcile them by hand.`);
+                    }
+                    if (action === ACTION_SUPPRESSED) {
+                        throw new Error(
+                            `An event for natural key '${derived.naturalKey}' was deliberately ` +
+                            `deleted; not recreating it under a new id. Lift the suppression ` +
+                            `explicitly if it is wanted again.`);
+                    }
+                    if (action === ACTION_NOOP && targetId) {
+                        const got = await calendar.events.get({
+                            calendarId: args.calendarId, eventId: targetId,
+                        });
+                        return got.data;       // unchanged document; do not churn the row
+                    }
+                    if (action === ACTION_ADOPT && targetId) {
+                        // Patch the row that EXISTS. `id` is stripped because an
+                        // event id is immutable — sending it would ask Google to
+                        // change the one thing it will not change.
+                        const { id: _immutable, ...patchBody } = requestBody as any;
+                        const adopted = await calendar.events.patch({
+                            calendarId: args.calendarId, eventId: targetId,
+                            requestBody: patchBody, sendUpdates: args.sendUpdates,
+                        });
+                        process.stderr.write(JSON.stringify({
+                            event: 'key_adoption', natural_key: derived.naturalKey,
+                            adopted_id: targetId, derived_id: derived.eventId,
+                        }) + '\n');
+                        pokeTripFeed(adopted.data?.id);
+                        return adopted.data;
+                    }
+                }
+            }
 
             // Determine if we need to enable conference data or attachments
             const conferenceDataVersion = args.conferenceData ? 1 : undefined;
             const supportsAttachments = args.attachments ? true : undefined;
-            
+
             const response = await calendar.events.insert({
                 calendarId: args.calendarId,
                 requestBody: requestBody,
@@ -201,9 +345,43 @@ export class CreateEventHandler extends BaseToolHandler {
             pokeTripFeed(response.data.id);
             return response.data;
         } catch (error: any) {
-            // Handle ID conflict errors specifically
+            // D1: a 409 on a DERIVED id is not a collision to avoid — it is
+            // the signal that a previous attempt landed. Branch on what is
+            // actually there rather than failing the caller.
+            //
+            // The cancelled branch is the one that matters: five Claudia-written
+            // events were deliberately deleted, and a handler that revived on
+            // 409 brings them all back on the next ingest. A user deletion is a
+            // decision, and the pipeline treats it as durable state.
             if (error?.code === 409 || error?.response?.status === 409) {
-                throw new Error(`Event ID '${args.eventId}' already exists. Please use a different ID.`);
+                if (!derivedIdUsed) {
+                    throw new Error(`Event ID '${args.eventId}' already exists. Please use a different ID.`);
+                }
+                let existing: any = null;
+                try {
+                    const got = await calendarUsed.events.get({
+                        calendarId: args.calendarId, eventId: derivedIdUsed,
+                    });
+                    existing = got.data;
+                } catch { existing = null; }
+
+                const decision = decideOnConflict(existing, desiredHashUsed!);
+                if (decision === ACTION_NOOP) {
+                    return existing;            // the retry's first write landed
+                }
+                if (decision === ACTION_SUPPRESSED) {
+                    throw new Error(
+                        `Event '${derivedIdUsed}' was deliberately deleted; not recreating it. ` +
+                        `Lift the suppression explicitly if it is wanted again.`);
+                }
+                if (decision === ACTION_PATCH) {
+                    const patched = await calendarUsed.events.patch({
+                        calendarId: args.calendarId, eventId: derivedIdUsed,
+                        requestBody: bodyUsed!, sendUpdates: args.sendUpdates,
+                    });
+                    pokeTripFeed(patched.data?.id);
+                    return patched.data;
+                }
             }
             throw this.handleGoogleApiError(error);
         }
