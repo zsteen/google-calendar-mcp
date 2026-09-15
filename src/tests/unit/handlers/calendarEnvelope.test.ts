@@ -11,8 +11,9 @@
  * CANONICAL SOURCE: Claudia repo, phase-shared/calendar_envelope/calendarEnvelope.test.ts
  * Deployed to:      google-calendar-mcp-fork/src/tests/unit/handlers/calendarEnvelope.test.ts
  */
-import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
+import { describe, it, expect, afterEach } from 'vitest';
+import { readFileSync, unlinkSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -31,6 +32,7 @@ import {
     ACTION_CREATED,
     ACTION_NOOP,
     ACTION_PATCH,
+    ACTION_REVIVE,
     ACTION_SUPPRESSED,
     contentHash,
     decideOnConflict,
@@ -41,6 +43,10 @@ import {
     naturalKey,
     titleSlug,
 } from '../../../handlers/core/calendarIdempotency.js';
+import {
+    reconciledKeys,
+    recordRevive,
+} from '../../../handlers/core/calendarReconciliation.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const vectors = JSON.parse(
@@ -276,6 +282,138 @@ describe('1.12 - the adoption path for rows written before the id scheme', () =>
     it('a row with no hash is adopted, not treated as unchanged', () => {
         expect(decideOnKeyMatch([row(LEGACY, { hash: null })], HASH, DERIVED))
             .toEqual({ action: ACTION_ADOPT, targetId: LEGACY });
+    });
+});
+
+describe('3.1d - reviving what the PIPELINE cancelled, not what a user deleted', () => {
+    // Mirrors phase-shared/tests/test_key_adoption.py and test_reconciliation.py.
+    // On the calendar a user deletion and a reconciliation cancel are the SAME
+    // `cancelled` row and mean opposite things; only the ledger separates them.
+    const HASH = 'sha256:abc123';
+    const DERIVED = 'kb4u63oo5a3k0rj5l13r1q074u24ipiu';
+    const LEGACY = '7p2q9x0mnbvc1234567890asdf';
+    const KEY = 'term-doc:redhill-2026-t3||2026-10-01|team-photos';
+
+    const cancelled = (id: string) => ({
+        id, status: 'cancelled',
+        extendedProperties: { private: { claudia_natural_key: KEY } },
+    } as any);
+
+    // ── the 409 branch ──
+    it('revives a cancelled derived id the ledger claims', () => {
+        expect(decideOnConflict(cancelled(DERIVED), HASH,
+                                { naturalKey: KEY, reconciledKeys: new Set([KEY]) }))
+            .toBe(ACTION_REVIVE);
+    });
+
+    it('suppresses when the ledger does not claim the key', () => {
+        expect(decideOnConflict(cancelled(DERIVED), HASH,
+                                { naturalKey: KEY, reconciledKeys: new Set(['other|key']) }))
+            .toBe(ACTION_SUPPRESSED);
+    });
+
+    it('suppresses when no ledger is supplied at all', () => {
+        // The safe default, and what kept this additive: every existing caller
+        // behaves exactly as it did.
+        expect(decideOnConflict(cancelled(DERIVED), HASH)).toBe(ACTION_SUPPRESSED);
+        expect(decideOnConflict(cancelled(DERIVED), HASH, {})).toBe(ACTION_SUPPRESSED);
+    });
+
+    it('an empty ledger set suppresses - the normal state today', () => {
+        expect(decideOnConflict(cancelled(DERIVED), HASH,
+                                { naturalKey: KEY, reconciledKeys: new Set() }))
+            .toBe(ACTION_SUPPRESSED);
+    });
+
+    it('a CONFIRMED row is never routed to revive', () => {
+        const live = { id: DERIVED, status: 'confirmed',
+                       extendedProperties: { private: { claudia_content_hash: HASH } } } as any;
+        expect(decideOnConflict(live, HASH,
+                                { naturalKey: KEY, reconciledKeys: new Set([KEY]) }))
+            .toBe(ACTION_NOOP);
+    });
+
+    // ── the 1.12 adoption branch ──
+    it('revives a cancelled row found by KEY under a non-derived id', () => {
+        expect(decideOnKeyMatch([cancelled(LEGACY)], HASH, DERIVED,
+                                { naturalKey: KEY, reconciledKeys: new Set([KEY]) }))
+            .toEqual({ action: ACTION_REVIVE, targetId: LEGACY });
+    });
+
+    it('the adoption branch also suppresses without ledger evidence', () => {
+        expect(decideOnKeyMatch([cancelled(LEGACY)], HASH, DERIVED,
+                                { naturalKey: KEY, reconciledKeys: new Set(['other']) }))
+            .toEqual({ action: ACTION_SUPPRESSED, targetId: null });
+        expect(decideOnKeyMatch([cancelled(LEGACY)], HASH, DERIVED))
+            .toEqual({ action: ACTION_SUPPRESSED, targetId: null });
+    });
+});
+
+describe('3.1d - the ledger reader, ported semantics', () => {
+    // The replay rule is the contract: append-only, LAST action per key wins.
+    // If this drifts from the Python reader the two languages disagree about
+    // which events may come back.
+    const tmp = join(tmpdir(), `recon-test-${process.pid}-${Math.random()}.jsonl`);
+    const write = (lines: string[]) => writeFileSync(tmp, lines.join('\n') + '\n', 'utf-8');
+    const rec = (key: string, action: string) =>
+        JSON.stringify({ at: '2026-09-15T10:00:00Z', action, natural_key: key,
+                         source: 's', event_id: 'e' });
+
+    afterEach(() => { try { unlinkSync(tmp); } catch { /* not created */ } });
+
+    it('a missing file is the normal state, not an error', () => {
+        expect(reconciledKeys(join(tmpdir(), 'definitely-absent-ledger.jsonl')))
+            .toEqual(new Set());
+    });
+
+    it('a cancel puts the key in the set', () => {
+        write([rec('a', 'cancelled')]);
+        expect(reconciledKeys(tmp)).toEqual(new Set(['a']));
+    });
+
+    it('a later revive clears it - last action wins', () => {
+        write([rec('a', 'cancelled'), rec('b', 'cancelled'), rec('a', 'revived')]);
+        expect(reconciledKeys(tmp)).toEqual(new Set(['b']));
+    });
+
+    it('a re-cancel after a revive puts it back', () => {
+        write([rec('a', 'cancelled'), rec('a', 'revived'), rec('a', 'cancelled')]);
+        expect(reconciledKeys(tmp)).toEqual(new Set(['a']));
+    });
+
+    it('a record with no action counts as a cancel, as in Python', () => {
+        write([JSON.stringify({ natural_key: 'a' })]);
+        expect(reconciledKeys(tmp)).toEqual(new Set(['a']));
+    });
+
+    it('one corrupt line does not disable the whole ledger', () => {
+        // Because that would silently turn every document-drop into a permanent
+        // suppression - the exact failure the ledger exists to prevent.
+        write([rec('a', 'cancelled'), '{not json', '', rec('b', 'cancelled')]);
+        expect(reconciledKeys(tmp)).toEqual(new Set(['a', 'b']));
+    });
+
+    it('a record with no natural_key is skipped', () => {
+        write([JSON.stringify({ action: 'cancelled', source: 's' }), rec('a', 'cancelled')]);
+        expect(reconciledKeys(tmp)).toEqual(new Set(['a']));
+    });
+
+    it('recordRevive appends a record the reader then honours', () => {
+        write([rec('a', 'cancelled')]);
+        expect(reconciledKeys(tmp)).toEqual(new Set(['a']));
+        expect(recordRevive({ naturalKey: 'a', source: 's', eventId: 'e' }, tmp)).toBe(true);
+        expect(reconciledKeys(tmp)).toEqual(new Set());
+    });
+
+    it('recordRevive creates the ledger directory if it does not exist', () => {
+        // The first ever revive may precede the first ever cancel on a fresh
+        // box, so the parent directory is not guaranteed to be there.
+        const nested = join(tmpdir(), `recon-nested-${process.pid}-${Math.random()}`,
+                            'state', 'ledger.jsonl');
+        expect(recordRevive({ naturalKey: 'a', source: 's', eventId: 'e' }, nested))
+            .toBe(true);
+        expect(reconciledKeys(nested)).toEqual(new Set());   // a revive alone sets nothing
+        unlinkSync(nested);
     });
 });
 

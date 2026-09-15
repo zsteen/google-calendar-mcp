@@ -197,6 +197,13 @@ export const ACTION_SUPPRESSED = 'suppressed';
  * on the next ingest.
  */
 /**
+ * A cancelled row THIS PIPELINE cancelled during reconciliation, because a
+ * document stopped listing it — now listed again. Patch it back to `confirmed`
+ * rather than suppressing it (task 3.1d).
+ */
+export const ACTION_REVIVE = 'revive';
+
+/**
  * A row already carrying this natural key, under an id that is NOT the derived
  * one. Patch THAT row; do not insert. The only way to converge onto a
  * pre-Phase-1 event, because a Calendar event id is fixed at insert.
@@ -255,6 +262,7 @@ export function decideOnKeyMatch(
     matches: calendar_v3.Schema$Event[] | null | undefined,
     desiredHash: string,
     derivedId: string,
+    opts?: { naturalKey?: string | null; reconciledKeys?: Set<string> | null },
 ): { action: string; targetId: string | null } {
     const rows = (matches ?? []).filter((r) => !r?.recurringEventId);
     if (rows.length === 0) return { action: ACTION_CREATED, targetId: null };
@@ -265,7 +273,14 @@ export function decideOnKeyMatch(
     // Already the derived id: let the insert run and the 409 branch decide, so
     // that case has exactly one code path rather than two that can drift.
     if (rowId === derivedId) return { action: ACTION_CREATED, targetId: null };
-    if (row.status === 'cancelled') return { action: ACTION_SUPPRESSED, targetId: null };
+    if (row.status === 'cancelled') {
+        // 3.1d: whose cancellation was it? Revive only what the pipeline itself
+        // cancelled; a user deletion stays suppressed.
+        if (opts?.naturalKey && opts?.reconciledKeys?.has(opts.naturalKey)) {
+            return { action: ACTION_REVIVE, targetId: rowId };
+        }
+        return { action: ACTION_SUPPRESSED, targetId: null };
+    }
     const found = (row.extendedProperties?.private as Record<string, string> | undefined)
         ?.claudia_content_hash;
     return { action: found === desiredHash ? ACTION_NOOP : ACTION_ADOPT, targetId: rowId };
@@ -273,11 +288,25 @@ export function decideOnKeyMatch(
 
 export function decideOnConflict(
     existing: calendar_v3.Schema$Event | null | undefined, desiredHash: string,
+    opts?: { naturalKey?: string | null; reconciledKeys?: Set<string> | null },
 ): string {
     // 409 with nothing readable behind it: the id is taken so creating is
     // impossible, and patching an event we cannot read is worse than nothing.
     if (!existing) return ACTION_SUPPRESSED;
-    if (existing.status === 'cancelled') return ACTION_SUPPRESSED;
+    if (existing.status === 'cancelled') {
+        // 3.1d, and the port of `idempotency.decide_on_conflict`'s same branch.
+        // A USER deletion is a decision to honour forever; a RECONCILIATION
+        // cancel is a fact about one revision of a document, and a school that
+        // drops a date by mistake must be able to put it back. On the calendar
+        // the two are the same `cancelled` row — only the ledger separates them.
+        //
+        // Omit the options and this suppresses exactly as before, which is the
+        // safe default for any caller with no ledger to consult.
+        if (opts?.naturalKey && opts?.reconciledKeys?.has(opts.naturalKey)) {
+            return ACTION_REVIVE;
+        }
+        return ACTION_SUPPRESSED;
+    }
     const found = (existing.extendedProperties?.private as Record<string, string> | undefined)
         ?.claudia_content_hash;
     return found === desiredHash ? ACTION_NOOP : ACTION_PATCH;

@@ -13,7 +13,8 @@ import { assertWritable } from "../../utils/write-allowlist.js";
 import { resolveSendUpdates } from "../../utils/invite-allowlist.js";
 import { stampClaudia, pokeTripFeed } from "./tripFeedStamp.js";
 import { applyWriteEnvelope } from "./calendarEnvelope.js";
-import { ACTION_ADOPT, ACTION_AMBIGUOUS, ACTION_NOOP, ACTION_PATCH, ACTION_SUPPRESSED, contentHash, decideOnConflict, decideOnKeyMatch, deriveIdFromBody, isIdempotentWrite } from "./calendarIdempotency.js";
+import { ACTION_ADOPT, ACTION_AMBIGUOUS, ACTION_NOOP, ACTION_PATCH, ACTION_REVIVE, ACTION_SUPPRESSED, contentHash, decideOnConflict, decideOnKeyMatch, deriveIdFromBody, isIdempotentWrite } from "./calendarIdempotency.js";
+import { recordRevive, reconciledKeys } from "./calendarReconciliation.js";
 
 export class CreateEventHandler extends BaseToolHandler {
     private conflictDetectionService: ConflictDetectionService;
@@ -154,6 +155,11 @@ export class CreateEventHandler extends BaseToolHandler {
         let derivedIdUsed: string | null = null;
         let desiredHashUsed: string | null = null;
         let bodyUsed: any = null;
+        // 3.1d: hoisted like the three above, because the 409 branch in the
+        // catch needs it and re-reading the ledger there could see a different
+        // file than the pre-insert branch did.
+        let naturalKeyUsed: string | null = null;
+        let reconciledUsed: Set<string> = new Set();
         try {
             // Hoisted out of the try below: the 409 branch in the catch needs it
             // to read back the event that already exists.
@@ -237,6 +243,7 @@ export class CreateEventHandler extends BaseToolHandler {
             bodyUsed = requestBody;
             if (derived) {
                 derivedIdUsed = derived.eventId;
+                naturalKeyUsed = derived.naturalKey;
                 desiredHashUsed = desiredHash;
                 requestBody.id = derived.eventId;
                 const priv = (requestBody.extendedProperties!.private ?? {}) as Record<string, string>;
@@ -268,6 +275,13 @@ export class CreateEventHandler extends BaseToolHandler {
             // the insert — i.e. exactly today's behaviour, which risks a
             // duplicate. Failing closed would mean a Calendar read blip stops
             // Claudia writing at all, and the person who finds out is Zig.
+            // 3.1d. Read the ledger ONCE, before either branch can need it: a
+            // reconcile cannot happen mid-create, and re-reading would make the
+            // outcome depend on timing. Empty when the file is absent — which is
+            // its normal state today — so every cancelled row suppresses exactly
+            // as it did before this landed.
+            if (derived) reconciledUsed = reconciledKeys();
+
             if (derived) {
                 let keyMatches: any[] | null = null;
                 try {
@@ -288,8 +302,9 @@ export class CreateEventHandler extends BaseToolHandler {
                 }
 
                 if (keyMatches !== null) {
-                    const { action, targetId } =
-                        decideOnKeyMatch(keyMatches, desiredHash!, derived.eventId);
+                    const { action, targetId } = decideOnKeyMatch(
+                        keyMatches, desiredHash!, derived.eventId,
+                        { naturalKey: derived.naturalKey, reconciledKeys: reconciledUsed });
 
                     if (action === ACTION_AMBIGUOUS) {
                         throw new Error(
@@ -309,6 +324,32 @@ export class CreateEventHandler extends BaseToolHandler {
                             calendarId: args.calendarId, eventId: targetId,
                         });
                         return got.data;       // unchanged document; do not churn the row
+                    }
+                    if (action === ACTION_REVIVE && targetId) {
+                        // The adoption branch's mirror: a row this pipeline
+                        // cancelled, under a non-derived id, now listed again.
+                        // `status` is set explicitly because a merge PATCH
+                        // leaves an omitted field alone — without it the row
+                        // would be updated and stay cancelled, which reads as a
+                        // successful revive and is not one.
+                        const { id: _immutable, ...reviveBody } = requestBody as any;
+                        reviveBody.status = 'confirmed';
+                        const revived = await calendar.events.patch({
+                            calendarId: args.calendarId, eventId: targetId,
+                            requestBody: reviveBody, sendUpdates: args.sendUpdates,
+                        });
+                        const noted = recordRevive({
+                            naturalKey: derived.naturalKey,
+                            source: (requestBody.extendedProperties?.private as any)
+                                ?.claudia_source ?? '',
+                            eventId: targetId,
+                        });
+                        process.stderr.write(JSON.stringify({
+                            event: 'key_revive', natural_key: derived.naturalKey,
+                            revived_id: targetId, ledger_updated: noted,
+                        }) + '\n');
+                        pokeTripFeed(revived.data?.id);
+                        return revived.data;
                     }
                     if (action === ACTION_ADOPT && targetId) {
                         // Patch the row that EXISTS. `id` is stripped because an
@@ -365,9 +406,34 @@ export class CreateEventHandler extends BaseToolHandler {
                     existing = got.data;
                 } catch { existing = null; }
 
-                const decision = decideOnConflict(existing, desiredHashUsed!);
+                const decision = decideOnConflict(existing, desiredHashUsed!, {
+                    naturalKey: naturalKeyUsed, reconciledKeys: reconciledUsed,
+                });
                 if (decision === ACTION_NOOP) {
                     return existing;            // the retry's first write landed
+                }
+                if (decision === ACTION_REVIVE) {
+                    // 3.1d on the 409 branch: the derived id exists but is
+                    // cancelled, and the ledger says WE cancelled it. Patch it
+                    // back rather than refusing forever.
+                    const reviveBody = { ...(bodyUsed as any), status: 'confirmed' };
+                    delete reviveBody.id;       // an event id is immutable
+                    const revived = await calendarUsed.events.patch({
+                        calendarId: args.calendarId, eventId: derivedIdUsed,
+                        requestBody: reviveBody, sendUpdates: args.sendUpdates,
+                    });
+                    const noted = recordRevive({
+                        naturalKey: naturalKeyUsed!,
+                        source: (bodyUsed?.extendedProperties?.private as any)
+                            ?.claudia_source ?? '',
+                        eventId: derivedIdUsed!,
+                    });
+                    process.stderr.write(JSON.stringify({
+                        event: 'conflict_revive', natural_key: naturalKeyUsed,
+                        revived_id: derivedIdUsed, ledger_updated: noted,
+                    }) + '\n');
+                    pokeTripFeed(revived.data?.id);
+                    return revived.data;
                 }
                 if (decision === ACTION_SUPPRESSED) {
                     throw new Error(
