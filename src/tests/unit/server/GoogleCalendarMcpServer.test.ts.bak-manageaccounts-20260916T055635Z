@@ -119,62 +119,7 @@ describe('GoogleCalendarMcpServer', () => {
     state.httpConnect.mockResolvedValue(undefined);
     state.calendarRegistryGetUnifiedCalendars.mockResolvedValue([]);
     process.env.NODE_ENV = 'test';
-    // C36: manage-accounts is gated on this flag and the DEPLOYED default is
-    // off. Upstream's registration assertions below are about the tool being
-    // registered, so they need the flag on to still be testing what they were
-    // written to test. Stated here rather than in vitest's global env, so the
-    // suite's default stays the deployed default and the OFF case can be a real
-    // test instead of an absence. Do not delete this on a merge.
-    process.env.CLAUDIA_ENABLE_MANAGE_ACCOUNTS = 'true';
     vi.spyOn(process, 'on').mockImplementation(state.processOn as any);
-  });
-
-  afterEach(() => {
-    delete process.env.CLAUDIA_ENABLE_MANAGE_ACCOUNTS;
-  });
-
-  // ── C36: the gate, both positions ──────────────────────────────────────────
-  it('does NOT register manage-accounts when the flag is unset (deployed default)', async () => {
-    delete process.env.CLAUDIA_ENABLE_MANAGE_ACCOUNTS;
-
-    const server = new GoogleCalendarMcpServer({
-      transport: { type: 'stdio' },
-      debug: false
-    } as any);
-    await server.initialize();
-
-    // The only registerTool caller in this class is manage-accounts; every
-    // other tool goes through the mocked ToolRegistry.registerAll.
-    expect(state.registerTool).not.toHaveBeenCalled();
-    expect(state.toolRegistryRegisterAll).toHaveBeenCalledTimes(1);
-  });
-
-  it('registers manage-accounts when the flag is explicitly true', async () => {
-    process.env.CLAUDIA_ENABLE_MANAGE_ACCOUNTS = 'true';
-
-    const server = new GoogleCalendarMcpServer({
-      transport: { type: 'stdio' },
-      debug: false
-    } as any);
-    await server.initialize();
-
-    expect(state.registerTool).toHaveBeenCalledWith(
-      'manage-accounts',
-      expect.any(Object),
-      expect.any(Function)
-    );
-  });
-
-  it('treats any value other than the string "true" as off', async () => {
-    process.env.CLAUDIA_ENABLE_MANAGE_ACCOUNTS = '1';
-
-    const server = new GoogleCalendarMcpServer({
-      transport: { type: 'stdio' },
-      debug: false
-    } as any);
-    await server.initialize();
-
-    expect(state.registerTool).not.toHaveBeenCalled();
   });
 
   it('initializes dependencies, registers tools, and installs shutdown handlers', async () => {
