@@ -320,9 +320,12 @@ export function validateCreatePayload(body: calendar_v3.Schema$Event): void {
             + 'so this event would take a server-assigned id and a re-ingest of the same '
             + 'source would duplicate it. Name where it came from: '
             + '"term-doc:redhill-2026-t3" for a school term document, "doc:<slug>" for '
-            + 'another document, "gmail:<slug>" for an email, "whatsapp:<slug>" for a '
-            + 'forwarded message, or "chat" when Zig asked directly. Use the SAME id every '
-            + 'time you re-read the same document.',
+            + 'another document, "gmail:<threadId>" for an email (the Gmail threadId '
+            + 'from the tool result, e.g. gmail:1a0a6b82bef7b2e1 - never a slug you '
+            + 'made up), "whatsapp:<slug>" for a forwarded message, or "chat" when Zig '
+            + 'asked directly with no document behind it. If Zig asks you to add '
+            + "something FROM an email, the source is that email's thread, not chat. "
+            + 'Use the SAME id every time you re-read the same document.',
         ]);
     }
 }

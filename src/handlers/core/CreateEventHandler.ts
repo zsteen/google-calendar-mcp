@@ -13,6 +13,7 @@ import { assertWritable } from "../../utils/write-allowlist.js";
 import { resolveSendUpdates } from "../../utils/invite-allowlist.js";
 import { stampClaudia, pokeTripFeed } from "./tripFeedStamp.js";
 import { applyWriteEnvelope } from "./calendarEnvelope.js";
+import { classifyLocationAtWrite } from "./venueKb.js";
 import { ACTION_ADOPT, ACTION_AMBIGUOUS, ACTION_NOOP, ACTION_PATCH, ACTION_REVIVE, ACTION_SUPPRESSED, contentHash, decideOnConflict, decideOnKeyMatch, deriveIdFromBody, isIdempotentWrite } from "./calendarIdempotency.js";
 import { recordRevive, reconciledKeys } from "./calendarReconciliation.js";
 
@@ -230,6 +231,12 @@ export class CreateEventHandler extends BaseToolHandler {
             //
             // Updates are never subject to it: they address an existing row by
             // id, and the source is only ever used to derive an id at insert.
+            // R2 (tracker C47): classify the location from the venue KB BEFORE the
+            // envelope's fill-if-absent defaults, so a known venue lands resolved/
+            // high/venue_kb instead of the unclassified/n/a every agent write
+            // carried until 2026-09-18. A caller's own policy is never overruled;
+            // an unknown venue stays unclassified; no KB means no claim.
+            classifyLocationAtWrite(requestBody);
             const requireCreateSource = process.env.CALENDAR_REQUIRE_CREATE_SOURCE === '1';
             applyWriteEnvelope(requestBody, undefined, { isCreate: requireCreateSource });
 
