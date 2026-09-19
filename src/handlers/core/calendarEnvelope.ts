@@ -23,7 +23,7 @@ import { calendar_v3 } from 'googleapis';
 
 export const SCHEMA_VERSION = '2';
 /** Must equal `version` in gate-vectors.json and GATE_VECTORS_VERSION in envelope.py. */
-export const GATE_VECTORS_VERSION = '4';
+export const GATE_VECTORS_VERSION = '5';
 
 export const K_SCHEMA = 'claudia_schema';
 export const K_SOURCE = 'claudia_source';
@@ -157,6 +157,79 @@ export function ensureEnvelope(body: calendar_v3.Schema$Event, source?: string):
     for (const [key, value] of Object.entries(defaults)) {
         if (priv[key] === undefined || priv[key] === null || String(priv[key]).trim() === '') {
             priv[key] = value;
+        }
+    }
+}
+
+/** Everything that together says "this is where the event is, and how we know". */
+const LOC_CLAIM_KEYS = [
+    K_LOC_POLICY, K_LOC_CONFIDENCE, K_LOC_SOURCE, K_LOC_PLACEID,
+    'claudia_loc_verified', 'claudia_loc_query', K_VENUE_ID, K_VENUE_KIND,
+] as const;
+
+/** Whitespace- and case-insensitive; `toLowerCase` to match Python's `lower()`. */
+function sameLocation(a: unknown, b: unknown): boolean {
+    const norm = (v: unknown) =>
+        String(v ?? '').split(/\s+/).filter((s) => s.length > 0).join(' ').toLowerCase();
+    return norm(a) === norm(b);
+}
+
+/**
+ * On an UPDATE, keep what the stored row knows that this write does not.
+ *
+ * `ensureEnvelope` is fill-if-absent against the OUTGOING body. On a create that
+ * is the whole story. An update body is built from scratch, so "absent" is true
+ * of every field the caller did not mention: the defaults are filled in and the
+ * PATCH writes them over the row's real values. Found 2026-09-19 - giving the
+ * two 'Mercy' performances a start time through update-event turned
+ * `term-doc:redhill-2026-t3 / resolved / high` into `calendar-mcp /
+ * unclassified / n/a`. `claudia_source` scopes which rows a source's reconcile
+ * may touch, so that is not bookkeeping.
+ *
+ * Same two rules as the Python `preserve_stored_envelope`, held together by the
+ * `preserve_stored_envelope` vectors. Call it after `ensureEnvelope`, with the
+ * row as read:
+ *
+ *   SOURCE    a generic source never replaces a stored one; a specific source in
+ *             the body is a statement and wins.
+ *   LOCATION  the default `unclassified` never replaces a stored classification
+ *             WHILE THE LOCATION IS UNCHANGED. A move the classifier could not
+ *             place is honestly `unclassified`; any other policy in the body is
+ *             a claim and wins.
+ *
+ * Never deletes a field, and a row with no envelope changes nothing.
+ */
+export function preserveStoredEnvelope(
+    body: calendar_v3.Schema$Event, stored: calendar_v3.Schema$Event | null | undefined,
+): void {
+    const kept = (stored?.extendedProperties?.private ?? {}) as Record<string, unknown>;
+    if (!stored || Object.keys(kept).length === 0) return;
+    const priv = privateProps(body);
+    const text = (v: unknown) => String(v ?? '').trim();
+
+    // GENERIC_SOURCES (below, shared with the create rule): what a write path
+    // calls itself when nobody said anything more specific. Provenance, not a
+    // claim - so neither may replace the source the row was created under.
+    const bodySource = text(priv[K_SOURCE]);
+    const storedSource = text(kept[K_SOURCE]);
+    if (storedSource && (bodySource === '' || GENERIC_SOURCES.includes(bodySource))) {
+        priv[K_SOURCE] = storedSource;
+    }
+
+    const storedPolicy = text(kept[K_LOC_POLICY]);
+    const noClaim = (text(priv[K_LOC_POLICY]) || POLICY_UNCLASSIFIED) === POLICY_UNCLASSIFIED;
+    const moved = Object.prototype.hasOwnProperty.call(body, 'location')
+        && body.location !== undefined
+        && !sameLocation(body.location, stored.location);
+    if (noClaim && !moved && storedPolicy && storedPolicy !== POLICY_UNCLASSIFIED) {
+        for (const key of LOC_CLAIM_KEYS) {
+            const value = text(kept[key]);
+            if (!value) continue;
+            if (key === K_LOC_POLICY || key === K_LOC_CONFIDENCE) {
+                priv[key] = value;                  // the pair the default overwrote
+            } else if (!text(priv[key])) {
+                priv[key] = value;
+            }
         }
     }
 }

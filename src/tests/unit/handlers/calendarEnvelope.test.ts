@@ -23,6 +23,7 @@ import {
     ensureEnvelope,
     normalizeDescription,
     normalizeSingleLine,
+    preserveStoredEnvelope,
     validateCreatePayload,
     validatePayload,
 } from '../../../handlers/core/calendarEnvelope.js';
@@ -491,6 +492,31 @@ describe('1.9b - the create-source switch, in BOTH positions', () => {
         const bad = sourced('calendar-mcp');
         applyWriteEnvelope(bad);
         expect(() => validateCreatePayload(bad)).toThrow(/generic default/);
+    });
+});
+
+describe('preserveStoredEnvelope - what an UPDATE may overwrite (v5)', () => {
+    // Exact equality on the private map: a field the rule should have left
+    // alone is as much a failure as one it should have kept. The first two
+    // vectors are the live rows this was found on (2026-09-19).
+    for (const c of vectors.preserve_stored_envelope as Array<any>) {
+        it(c.name, () => {
+            const body = JSON.parse(JSON.stringify(c.body));
+            const stored = JSON.parse(JSON.stringify(c.stored));
+            preserveStoredEnvelope(body, stored);
+            expect(body.extendedProperties.private).toEqual(c.private);
+            expect(stored).toEqual(c.stored);                  // the row as read is never mutated
+            expect(() => validatePayload({ ...body, summary: 'x' })).not.toThrow();
+        });
+    }
+
+    it('no stored row is a no-op, so a create is unaffected', () => {
+        const body: any = { summary: 'x' };
+        ensureEnvelope(body);
+        const before = JSON.parse(JSON.stringify(body));
+        preserveStoredEnvelope(body, null);
+        preserveStoredEnvelope(body, undefined);
+        expect(body).toEqual(before);
     });
 });
 

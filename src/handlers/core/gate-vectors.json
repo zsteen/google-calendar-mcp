@@ -1,5 +1,5 @@
 {
-  "version": "4",
+  "version": "5",
   "_comment": [
     "Shared conformance vectors for the Claudia calendar write gate.",
     "",
@@ -901,6 +901,401 @@
             "claudia_source": "term-doc:redhill-2026-t3"
           }
         }
+      }
+    }
+  ],
+  "_preserve_comment": [
+    "v5 - preserve_stored_envelope: what an UPDATE may and may not overwrite.",
+    "ensure_envelope is fill-if-absent against the OUTGOING body. An update body is",
+    "built from scratch, so every field the caller did not mention is 'absent', gets",
+    "the pessimistic default, and the PATCH writes it over the row's real value.",
+    "Found 2026-09-19 on live rows: the first two vectors are those rows.",
+    "Each case: `body` (after ensure_envelope) + `stored` (the row as read) ->",
+    "`private`, the body's private properties after the call. Exact equality.",
+    "Rules: a GENERIC source ('control_centre', 'calendar-mcp', empty) never replaces",
+    "a stored source; the default policy 'unclassified' never replaces a stored",
+    "classification while the location is unchanged (whitespace/case-insensitive);",
+    "any other policy in the body is a claim and wins; a moved event keeps its",
+    "truthful 'unclassified'; nothing is ever deleted."
+  ],
+  "preserve_stored_envelope": [
+    {
+      "name": "Mercy: the fork gives an all-day school row a start time",
+      "body": {
+        "start": {
+          "dateTime": "2026-10-29T18:00:00+02:00"
+        },
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "calendar-mcp",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "location": "Redhill School, 20 Summit Rd, Morningside, Sandton",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "term-doc:redhill-2026-t3",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "venue_kb",
+            "claudia_venue_id": "redhill-summit",
+            "claudia_venue_kind": "campus_sub_venue"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "term-doc:redhill-2026-t3",
+        "claudia_loc_policy": "resolved",
+        "claudia_loc_confidence": "high",
+        "claudia_loc_source": "venue_kb",
+        "claudia_venue_id": "redhill-summit",
+        "claudia_venue_kind": "campus_sub_venue"
+      }
+    },
+    {
+      "name": "QR 1366: the ingest patches a description, location unchanged",
+      "body": {
+        "location": "OR Tambo International Airport",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "travel-itinerary:travelit:0AAD035",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia": "1"
+          }
+        }
+      },
+      "stored": {
+        "location": "OR Tambo International Airport",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "travel-itinerary:travelit:0AAD035",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "geocode",
+            "claudia_loc_placeid": "ChIJwymiBTgUlR4R1iEoeUAcv7M",
+            "claudia_loc_query": "OR Tambo International Airport"
+          }
+        }
+      },
+      "private": {
+        "claudia": "1",
+        "claudia_schema": "2",
+        "claudia_source": "travel-itinerary:travelit:0AAD035",
+        "claudia_loc_policy": "resolved",
+        "claudia_loc_confidence": "high",
+        "claudia_loc_source": "geocode",
+        "claudia_loc_placeid": "ChIJwymiBTgUlR4R1iEoeUAcv7M",
+        "claudia_loc_query": "OR Tambo International Airport"
+      }
+    },
+    {
+      "name": "the same location, differently spaced and cased, is unchanged",
+      "body": {
+        "location": "  or tambo   INTERNATIONAL airport ",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "control_centre",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "location": "OR Tambo International Airport",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "travel-itinerary:travelit:0AAD035",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "geocode",
+            "claudia_loc_placeid": "ChIJwymiBTgUlR4R1iEoeUAcv7M",
+            "claudia_loc_query": "OR Tambo International Airport"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "travel-itinerary:travelit:0AAD035",
+        "claudia_loc_policy": "resolved",
+        "claudia_loc_confidence": "high",
+        "claudia_loc_source": "geocode",
+        "claudia_loc_placeid": "ChIJwymiBTgUlR4R1iEoeUAcv7M",
+        "claudia_loc_query": "OR Tambo International Airport"
+      }
+    },
+    {
+      "name": "QR 650: the location MOVED and nothing placed it - unclassified is true",
+      "body": {
+        "location": "Hamad International Airport (DOH)",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "travel-itinerary:travelit:0AAD035",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "location": "Doha International Airport",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "travel-itinerary:travelit:0AAD035",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "geocode",
+            "claudia_loc_placeid": "ChIJwymiBTgUlR4R1iEoeUAcv7M",
+            "claudia_loc_query": "Doha International Airport"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "travel-itinerary:travelit:0AAD035",
+        "claudia_loc_policy": "unclassified",
+        "claudia_loc_confidence": "n/a"
+      }
+    },
+    {
+      "name": "a location cleared to empty is a move",
+      "body": {
+        "location": "",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "calendar-mcp",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "location": "Redhill School, 20 Summit Rd, Morningside, Sandton",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "term-doc:redhill-2026-t3",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "venue_kb",
+            "claudia_venue_id": "redhill-summit",
+            "claudia_venue_kind": "campus_sub_venue"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "term-doc:redhill-2026-t3",
+        "claudia_loc_policy": "unclassified",
+        "claudia_loc_confidence": "n/a"
+      }
+    },
+    {
+      "name": "the body's own classification is a claim and wins",
+      "body": {
+        "location": "Fourways High School",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "calendar-mcp",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "venue_kb",
+            "claudia_venue_id": "fourways-hs",
+            "claudia_venue_kind": "physical"
+          }
+        }
+      },
+      "stored": {
+        "location": "Redhill School, 20 Summit Rd, Morningside, Sandton",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "term-doc:redhill-2026-t3",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "venue_kb",
+            "claudia_venue_id": "redhill-summit",
+            "claudia_venue_kind": "campus_sub_venue"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "term-doc:redhill-2026-t3",
+        "claudia_loc_policy": "resolved",
+        "claudia_loc_confidence": "high",
+        "claudia_loc_source": "venue_kb",
+        "claudia_venue_id": "fourways-hs",
+        "claudia_venue_kind": "physical"
+      }
+    },
+    {
+      "name": "on_campus_no_travel is a claim, not a default",
+      "body": {
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "control_centre",
+            "claudia_loc_policy": "on_campus_no_travel",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "location": "Redhill School, 20 Summit Rd, Morningside, Sandton",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "term-doc:redhill-2026-t3",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "venue_kb",
+            "claudia_venue_id": "redhill-summit",
+            "claudia_venue_kind": "campus_sub_venue"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "term-doc:redhill-2026-t3",
+        "claudia_loc_policy": "on_campus_no_travel",
+        "claudia_loc_confidence": "n/a"
+      }
+    },
+    {
+      "name": "a SPECIFIC source in the body is a statement and wins",
+      "body": {
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "gmail:1a0a6b82bef7b2e1",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "location": "Redhill School, 20 Summit Rd, Morningside, Sandton",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "term-doc:redhill-2026-t3",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "venue_kb",
+            "claudia_venue_id": "redhill-summit",
+            "claudia_venue_kind": "campus_sub_venue"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "gmail:1a0a6b82bef7b2e1",
+        "claudia_loc_policy": "resolved",
+        "claudia_loc_confidence": "high",
+        "claudia_loc_source": "venue_kb",
+        "claudia_venue_id": "redhill-summit",
+        "claudia_venue_kind": "campus_sub_venue"
+      }
+    },
+    {
+      "name": "one generic source does not replace another",
+      "body": {
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "control_centre",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "calendar-mcp",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "calendar-mcp",
+        "claudia_loc_policy": "unclassified",
+        "claudia_loc_confidence": "n/a"
+      }
+    },
+    {
+      "name": "a row that predates the envelope changes nothing",
+      "body": {
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "calendar-mcp",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "summary": "an old row",
+        "location": "Somewhere"
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "calendar-mcp",
+        "claudia_loc_policy": "unclassified",
+        "claudia_loc_confidence": "n/a"
+      }
+    },
+    {
+      "name": "a stored row with private properties but no envelope keeps the defaults",
+      "body": {
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "calendar-mcp",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "location": "Bona Bana Art School",
+        "extendedProperties": {
+          "private": {
+            "kb_school_id": "wda_0123ba51a2654d78"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "calendar-mcp",
+        "claudia_loc_policy": "unclassified",
+        "claudia_loc_confidence": "n/a"
       }
     }
   ]
