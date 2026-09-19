@@ -18,6 +18,7 @@ import {
 import { assertWritable } from "../../utils/write-allowlist.js";
 import { resolveSendUpdates } from "../../utils/invite-allowlist.js";
 import { pokeTripFeed } from "./tripFeedStamp.js";
+import { carrySplitSeriesProperties, linkedSeriesRefusal } from "./seriesSplit.js";
 
 export class UpdateEventHandler extends BaseToolHandler {
     private conflictDetectionService: ConflictDetectionService;
@@ -287,6 +288,13 @@ export class UpdateEventHandler extends BaseToolHandler {
             throw new Error('Event does not have recurrence rules');
         }
 
+        // BEFORE step 2, which is the first write: a refusal after the UNTIL is
+        // patched would leave the series truncated with nothing following it.
+        const refusal = linkedSeriesRefusal(originalEvent);
+        if (refusal) {
+            throw new RecurringEventError(refusal, RECURRING_EVENT_ERRORS.LINKED_SERIES_SPLIT);
+        }
+
         // 2. Calculate UNTIL date and update original event
         const untilDate = helpers.calculateUntilDate(args.futureStartDate);
         const updatedRecurrence = helpers.updateRecurrenceWithUntil(originalEvent.recurrence, untilDate);
@@ -299,6 +307,10 @@ export class UpdateEventHandler extends BaseToolHandler {
 
         // 3. Create new recurring event starting from future date
         const requestBody = helpers.buildUpdateRequestBody(args, defaultTimeZone, originalEvent);
+        // `...requestBody` below replaces the original's private map wholesale
+        // (the envelope guarantees the body has one), so say per key what the
+        // new series keeps - see seriesSplit.ts. Never the natural key.
+        carrySplitSeriesProperties(requestBody, originalEvent, { timeChanged: Boolean(args.start || args.end) });
         
         // Calculate end time if start time is changing
         let endTime = args.end;
