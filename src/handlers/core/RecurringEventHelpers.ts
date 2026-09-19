@@ -1,7 +1,8 @@
 import { calendar_v3 } from 'googleapis';
 import { createTimeObject } from '../../utils/datetime.js';
 import { stampClaudia } from "./tripFeedStamp.js";
-import { applyWriteEnvelope } from "./calendarEnvelope.js";
+import { applyWriteEnvelope, preserveStoredEnvelope } from "./calendarEnvelope.js";
+import { classifyLocationAtWrite } from "./venueKb.js";
 
 export class RecurringEventHelpers {
   private calendar: calendar_v3.Calendar;
@@ -116,9 +117,17 @@ export class RecurringEventHelpers {
   }
 
   /**
-   * Builds request body for event updates
+   * Builds request body for event updates.
+   *
+   * `stored` is the row as read, and every caller that PATCHES passes it. The
+   * envelope below is filled against this BODY, which starts empty - so without
+   * the stored row every field the caller did not mention carries the
+   * pessimistic default, and the patch writes it over the row's real value
+   * (2026-09-19: a start time on 'Mercy' cost the row its source and its
+   * classification). See `preserveStoredEnvelope`.
    */
-  buildUpdateRequestBody(args: any, defaultTimeZone?: string): calendar_v3.Schema$Event {
+  buildUpdateRequestBody(args: any, defaultTimeZone?: string,
+                         stored?: calendar_v3.Schema$Event | null): calendar_v3.Schema$Event {
     const requestBody: calendar_v3.Schema$Event = {};
 
     if (args.summary !== undefined && args.summary !== null) requestBody.summary = args.summary;
@@ -140,7 +149,11 @@ export class RecurringEventHelpers {
     // Phase 0 write gate: normalise -> ensure envelope -> validate.
     // AFTER stampClaudia, never before: ensureEnvelope is fill-if-absent,
     // so the Trip Feed stamp survives only if it is already present.
+    // Classify first, as create does and as every Python write does: an update
+    // that MOVES the event to a venue the KB knows is a claim, not a default.
+    classifyLocationAtWrite(requestBody);
     applyWriteEnvelope(requestBody);
+    preserveStoredEnvelope(requestBody, stored);
     if (args.attachments !== undefined && args.attachments !== null) requestBody.attachments = args.attachments;
     if (args.eventType !== undefined && args.eventType !== null) requestBody.eventType = args.eventType;
 

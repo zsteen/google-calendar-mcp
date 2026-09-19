@@ -220,7 +220,8 @@ export class UpdateEventHandler extends BaseToolHandler {
         const calendar = helpers.getCalendar();
         const instanceId = helpers.formatInstanceId(args.eventId, args.originalStartTime);
 
-        const requestBody = helpers.buildUpdateRequestBody(args, defaultTimeZone);
+        const stored = await this.storedRow(calendar, args.calendarId, instanceId);
+        const requestBody = helpers.buildUpdateRequestBody(args, defaultTimeZone, stored);
         const conferenceDataVersion = requestBody.conferenceData !== undefined ? 1 : undefined;
         const supportsAttachments = requestBody.attachments !== undefined ? true : undefined;
 
@@ -243,7 +244,8 @@ export class UpdateEventHandler extends BaseToolHandler {
     ): Promise<calendar_v3.Schema$Event> {
         const calendar = helpers.getCalendar();
 
-        const requestBody = helpers.buildUpdateRequestBody(args, defaultTimeZone);
+        const stored = await this.storedRow(calendar, args.calendarId, args.eventId);
+        const requestBody = helpers.buildUpdateRequestBody(args, defaultTimeZone, stored);
         const conferenceDataVersion = requestBody.conferenceData !== undefined ? 1 : undefined;
         const supportsAttachments = requestBody.attachments !== undefined ? true : undefined;
 
@@ -296,7 +298,7 @@ export class UpdateEventHandler extends BaseToolHandler {
         });
 
         // 3. Create new recurring event starting from future date
-        const requestBody = helpers.buildUpdateRequestBody(args, defaultTimeZone);
+        const requestBody = helpers.buildUpdateRequestBody(args, defaultTimeZone, originalEvent);
         
         // Calculate end time if start time is changing
         let endTime = args.end;
@@ -330,6 +332,19 @@ export class UpdateEventHandler extends BaseToolHandler {
 
         if (!response.data) throw new Error('Failed to create new recurring event');
         return response.data;
+    }
+
+    /**
+     * The row about to be patched, read so the envelope can keep what it knows
+     * (`preserveStoredEnvelope`). A failed read is RAISED, not swallowed: a row
+     * that could not be read must not be written over blind, and the patch that
+     * follows would fail on the same id anyway.
+     */
+    private async storedRow(
+        calendar: calendar_v3.Calendar, calendarId: string, eventId: string,
+    ): Promise<calendar_v3.Schema$Event | null> {
+        const response = await calendar.events.get({ calendarId, eventId });
+        return response.data ?? null;
     }
 
     /**
