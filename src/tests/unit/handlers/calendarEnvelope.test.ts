@@ -492,6 +492,34 @@ describe('1.9b - the create-source switch, in BOTH positions', () => {
         applyWriteEnvelope(bad);
         expect(() => validateCreatePayload(bad)).toThrow(/generic default/);
     });
+
+    it('the refusal names the Gmail threadId, and never an invented slug', () => {
+        // The message IS the enforcement's instruction sheet - as the comment
+        // above validateCreatePayload says, the caller is usually a model and a
+        // refusal it cannot act on is just an outage. So the vocabulary here
+        // decides which source id gets written, which makes this wording
+        // load-bearing - and until now untested. It was edited live on the VPS
+        // on 2026-09-18, served calendar writes for a day in no commit, and was
+        // rescued on 2026-09-19 (fork PR #1). Nothing in this file would have
+        // gone red if a rebuild had quietly dropped it.
+        //
+        // `gmail:<slug>` is the wording guarded against, not a typo: a slug the
+        // model invents varies between reads of the same email, so the derived
+        // id varies with it and re-reading one email writes a SECOND event -
+        // the duplication claudia_source exists to prevent. A threadId is
+        // stable, so the same email always lands on the same id.
+        let message = '';
+        try {
+            applyWriteEnvelope(sourced('calendar-mcp'), undefined, { isCreate: true });
+        } catch (e) {
+            message = (e as PayloadValidationError).message;
+        }
+        expect(message).toContain('gmail:<threadId>');
+        expect(message).not.toContain('gmail:<slug>');
+        expect(message).toContain('never a slug you made up');
+        // And the half that keeps an emailed request from being filed as `chat`.
+        expect(message).toContain('not chat');
+    });
 });
 
 describe('ensureEnvelope', () => {
