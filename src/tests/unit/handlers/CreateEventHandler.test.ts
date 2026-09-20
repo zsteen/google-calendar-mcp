@@ -482,14 +482,20 @@ describe('CreateEventHandler', () => {
 
       await handler.runTool(args, mockAccounts);
 
+      // The caller's own properties must survive untouched alongside the Phase 0
+      // schema-2 envelope (claudia_*) and the Trip Feed stamp, which every write
+      // now carries. Asserted with objectContaining rather than an exact body:
+      // pinning the exact shape is what made this test fail when the envelope
+      // arrived, and it was asserting the ABSENCE of the envelope by accident.
       expect(mockCalendar.events.insert).toHaveBeenCalledWith(
         expect.objectContaining({
           requestBody: expect.objectContaining({
             extendedProperties: {
-              private: {
+              private: expect.objectContaining({
                 'appId': '12345',
-                'customField': 'value1'
-              },
+                'customField': 'value1',
+                'claudia_schema': '2'
+              }),
               shared: {
                 'projectId': 'proj-789',
                 'category': 'meeting'

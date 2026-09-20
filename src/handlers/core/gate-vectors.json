@@ -1,0 +1,1302 @@
+{
+  "version": "5",
+  "_comment": [
+    "Shared conformance vectors for the Claudia calendar write gate.",
+    "",
+    "Claudia writes to this calendar from TWO codebases: the Python paths in",
+    "control_centre.live_gcal, and the forked Node calendar MCP the agent calls.",
+    "Both must enforce the SAME rules, or an event can reach the calendar",
+    "through whichever one is laxer -- and the lax one would be the Node side,",
+    "which is where the school-document events (and D3) come from.",
+    "",
+    "This file is the contract. Both test suites load it and assert identical",
+    "outcomes. Canonical copy lives in the Claudia repo at",
+    "phase-shared/calendar_envelope/gate-vectors.json; the fork gets a deployed",
+    "copy at src/handlers/core/gate-vectors.json.",
+    "",
+    "DRIFT TRIPWIRE: both implementations hardcode the expected `version`. To",
+    "change these vectors you must bump `version` here AND the constant in",
+    "calendar_envelope/envelope.py AND the constant in calendarEnvelope.ts --",
+    "so a one-sided edit fails both suites instead of silently diverging."
+  ],
+  "validate": [
+    {
+      "name": "minimal valid payload",
+      "accept": true,
+      "body": {
+        "summary": "Team Photos",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "missing envelope entirely",
+      "accept": false,
+      "expect": "extendedProperties",
+      "body": {
+        "summary": "x"
+      }
+    },
+    {
+      "name": "missing private map",
+      "accept": false,
+      "expect": "private",
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "shared": {
+            "a": "b"
+          }
+        }
+      }
+    },
+    {
+      "name": "missing claudia_schema",
+      "accept": false,
+      "expect": "claudia_schema",
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "private": {
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "missing claudia_loc_policy",
+      "accept": false,
+      "expect": "claudia_loc_policy",
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "missing claudia_loc_confidence",
+      "accept": false,
+      "expect": "claudia_loc_confidence",
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified"
+          }
+        }
+      }
+    },
+    {
+      "name": "empty string counts as missing",
+      "accept": false,
+      "expect": "claudia_loc_policy",
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "   ",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "wrong schema version",
+      "accept": false,
+      "expect": "claudia_schema",
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "1",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "unknown policy",
+      "accept": false,
+      "expect": "claudia_loc_policy",
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "probably_fine",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "unknown confidence",
+      "accept": false,
+      "expect": "claudia_loc_confidence",
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "quite_sure"
+          }
+        }
+      }
+    },
+    {
+      "name": "equals sign in a value breaks the events.list filter",
+      "accept": false,
+      "expect": "list filter",
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia_source": "term-doc:a=b"
+          }
+        }
+      }
+    },
+    {
+      "name": "dotted key",
+      "accept": false,
+      "expect": "claudia.loc.source",
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia.loc.source": "venue_kb"
+          }
+        }
+      }
+    },
+    {
+      "name": "geocoded resolve with no place_id is a guess",
+      "accept": false,
+      "expect": "geocode",
+      "body": {
+        "summary": "x",
+        "location": "somewhere",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "geocode"
+          }
+        }
+      }
+    },
+    {
+      "name": "resolve with no identity at all",
+      "accept": false,
+      "expect": "claudia_loc_placeid",
+      "body": {
+        "summary": "x",
+        "location": "somewhere",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high"
+          }
+        }
+      }
+    },
+    {
+      "name": "venue_kb resolve with a venue_id and no place_id is fine",
+      "accept": true,
+      "body": {
+        "summary": "x",
+        "location": "Redhill School (Summit entrance)",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "venue_kb",
+            "claudia_venue_id": "redhill_summit",
+            "claudia_venue_kind": "campus_sub_venue"
+          }
+        }
+      }
+    },
+    {
+      "name": "geocoded resolve WITH a place_id is fine",
+      "accept": true,
+      "body": {
+        "summary": "x",
+        "location": "Roedean School",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "medium",
+            "claudia_loc_source": "geocode",
+            "claudia_loc_placeid": "ChIJEX7KMz8MlR4Rfb635cO29Tg"
+          }
+        }
+      }
+    },
+    {
+      "name": "on_campus_no_travel must not carry a location",
+      "accept": false,
+      "expect": "intentionally empty",
+      "body": {
+        "summary": "x",
+        "location": "Redhill School",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "on_campus_no_travel",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "on_campus_no_travel with no location is the 14 Sep repaired state",
+      "accept": true,
+      "body": {
+        "summary": "Summer 2 Co-Curricular ends",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "on_campus_no_travel",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "unresolved_tbc must not carry a location",
+      "accept": false,
+      "expect": "intentionally empty",
+      "body": {
+        "summary": "x",
+        "location": "Johannesburg",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unresolved_tbc",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "unclassified must be n/a confidence",
+      "accept": false,
+      "expect": "unclassified",
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "high"
+          }
+        }
+      }
+    },
+    {
+      "name": "literal backslash-n in description",
+      "accept": false,
+      "expect": "backslash-n",
+      "body": {
+        "summary": "x",
+        "description": "one\\ntwo",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "literal backslash-n in summary",
+      "accept": false,
+      "expect": "backslash-n",
+      "body": {
+        "summary": "Spring Day\\nGrace",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "literal backslash-n in location",
+      "accept": false,
+      "expect": "backslash-n",
+      "body": {
+        "summary": "x",
+        "location": "Redhill\\nSummit",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "real newline in description is correct and must pass",
+      "accept": true,
+      "body": {
+        "summary": "x",
+        "description": "one\ntwo",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "instruction stub written as an event",
+      "accept": false,
+      "expect": "Action Inbox",
+      "body": {
+        "summary": "Kathmandu",
+        "description": "Add 4-leg flight itinerary to calendar",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "a hotel check-in is NOT an instruction stub",
+      "accept": true,
+      "body": {
+        "summary": "Dwarika's Sanctuary",
+        "description": "Check in 14:00, confirmation 1090495636",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "time_precision window requires a window",
+      "accept": false,
+      "expect": "claudia_time_window",
+      "body": {
+        "summary": "MCC 5s",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia_time_precision": "window"
+          }
+        }
+      }
+    },
+    {
+      "name": "time_precision placeholder needs no window",
+      "accept": true,
+      "body": {
+        "summary": "Race",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia_time_precision": "placeholder"
+          }
+        }
+      }
+    },
+    {
+      "name": "unknown venue_kind",
+      "accept": false,
+      "expect": "claudia_venue_kind",
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia_venue_kind": "stadium"
+          }
+        }
+      }
+    },
+    {
+      "name": "broadcast venue_kind is accepted (thirteen Springbok fixtures)",
+      "accept": true,
+      "body": {
+        "summary": "Springboks v Wallabies",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unresolved_tbc",
+            "claudia_loc_confidence": "n/a",
+            "claudia_venue_kind": "broadcast"
+          }
+        }
+      }
+    },
+    {
+      "name": "a third-party camelCase key is none of our business",
+      "accept": true,
+      "_why": "v2. extendedProperties.private is a SHARED map. An earlier gate checked every key against the claudia naming rule and rejected an entire legitimate write because the caller passed `trackingId`. The rule exists to keep OUR keys usable in the events.list filter; foreign keys are not ours to police. Caught by the calendar MCP's own CreateEventHandler suite, not by these vectors — which is why the host repo's tests get run too.",
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "trackingId": "789",
+            "appId": "12345",
+            "customField": "value1"
+          }
+        }
+      }
+    },
+    {
+      "name": "a foreign key may even contain an equals sign",
+      "accept": true,
+      "_why": "v2. We only query on claudia_* keys, so an `=` in someone else's value cannot break our filter. Rejecting their write for it is overreach.",
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "vendorBlob": "a=b;c=d"
+          }
+        }
+      }
+    },
+    {
+      "name": "our own keys are still policed",
+      "accept": false,
+      "expect": "claudia.loc.query",
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia.loc.query": "Redhill"
+          }
+        }
+      }
+    },
+    {
+      "name": "foreign keys alongside the envelope are fine",
+      "accept": true,
+      "body": {
+        "summary": "x",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia": "1",
+            "kb_school_id": "evt_db097fdc41ff46bb",
+            "trip_id": "trip_bella_italia"
+          }
+        }
+      }
+    }
+  ],
+  "_idempotency_comment": [
+    "v3 — D1. These matter MORE than the validation vectors, because a",
+    "mismatch here is silent and expensive: if Python and TypeScript slug a",
+    "title differently they derive DIFFERENT ids for the same event, both",
+    "inserts succeed, and the duplicate the whole phase exists to prevent",
+    "comes straight back — with no error anywhere to notice it by.",
+    "",
+    "The expected event_ids are pinned literally. They are frozen by caution 4:",
+    "changing the derivation orphans every event the pipeline has ever written,",
+    "so a change here is a migration with an explicit old->new mapping pass, not",
+    "an edit. If one of these values ever needs to move, that is the signal to",
+    "stop and write the migration."
+  ],
+  "title_slug": [
+    {
+      "in": "Grade 6-9 Reports",
+      "out": "grade-6-9-reports"
+    },
+    {
+      "in": "Grade 6–9 Reports",
+      "out": "grade-6-9-reports",
+      "_why": "en dash — an ASCII fold that DROPS non-ASCII gives grade-69 here and grade-6-9 above: two keys, one event"
+    },
+    {
+      "in": "Grade 6—9 Reports",
+      "out": "grade-6-9-reports",
+      "_why": "em dash"
+    },
+    {
+      "in": "Médoc Marathon",
+      "out": "medoc-marathon"
+    },
+    {
+      "in": "📸 Sport & Cultural Team Photos",
+      "out": "sport-cultural-team-photos",
+      "_why": "Claudia's own image-optimisation rules add and change emoji prefixes"
+    },
+    {
+      "in": "Spring  Day",
+      "out": "spring-day"
+    },
+    {
+      "in": "[Junior School] Hooked on Books — Grace",
+      "out": "junior-school-hooked-on-books-grace"
+    },
+    {
+      "in": "",
+      "out": ""
+    }
+  ],
+  "natural_key": [
+    {
+      "source": "term-doc:redhill-2026-t3",
+      "date": "2026-10-01",
+      "title": "Sport & Cultural Team Photos",
+      "section": null,
+      "key": "term-doc:redhill-2026-t3||2026-10-01|sport-cultural-team-photos",
+      "event_id": "kb8ie1hpfn0c9f01p9gsjhg60d23480m"
+    },
+    {
+      "source": "term-doc:redhill-2026-t3",
+      "date": "2026-12-09",
+      "title": "📋 [Junior School] Grade 2–5 Reports on ADAM — Grace",
+      "section": null,
+      "key": "term-doc:redhill-2026-t3||2026-12-09|junior-school-grade-2-5-reports-on-adam-grace",
+      "event_id": "kbq7ogp5j0de0v3i6ke57em37q6ftliv",
+      "_why": "the real suppressed duplicate — this exact key is in the live suppression store"
+    },
+    {
+      "source": "term-doc:redhill-2026-t3",
+      "date": "2026-10-01",
+      "title": "Team Photos",
+      "section": "middle",
+      "key": "term-doc:redhill-2026-t3|middle|2026-10-01|team-photos",
+      "event_id": "kb1t9llfi050uru3o4hu1jnk563752b9",
+      "_why": "section is part of the frozen shape; an empty one is an empty FIELD"
+    },
+    {
+      "source": "gmail",
+      "date": "2026-11-07",
+      "title": "HOKA Half Runfest",
+      "section": null,
+      "key": "gmail||2026-11-07|hoka-half-runfest",
+      "event_id": "kb61vg8nci9ktem6gfsvj6ijf1i00anv"
+    }
+  ],
+  "content_hash": [
+    {
+      "body": {
+        "summary": "x",
+        "description": "d",
+        "location": "l",
+        "start": {
+          "date": "2026-10-01"
+        },
+        "end": {
+          "date": "2026-10-02"
+        }
+      },
+      "hash": "sha256:5a6f8c4fab93b99fec41ef2eee4f6cbb798e02f6f76aba3c886d01df66cb8f86"
+    },
+    {
+      "body": {
+        "summary": "x",
+        "start": {
+          "date": "2026-10-01"
+        }
+      },
+      "hash": "sha256:9e29598f3dfc71beb9db3a626bc3a203bfa1526de3cf9d9063f2cb1b44beb118"
+    }
+  ],
+  "normalize_description": [
+    {
+      "name": "literal backslash-n",
+      "in": "a\\nb",
+      "out": "a\nb"
+    },
+    {
+      "name": "literal backslash-r-n decodes first",
+      "in": "a\\r\\nb",
+      "out": "a\nb"
+    },
+    {
+      "name": "literal tab",
+      "in": "a\\tb",
+      "out": "a\tb"
+    },
+    {
+      "name": "real CRLF",
+      "in": "a\r\nb",
+      "out": "a\nb"
+    },
+    {
+      "name": "trailing whitespace per line",
+      "in": "a   \nb\t\nc",
+      "out": "a\nb\nc"
+    },
+    {
+      "name": "three blank lines collapse to one",
+      "in": "a\n\n\n\nb",
+      "out": "a\n\nb"
+    },
+    {
+      "name": "five blank lines collapse to one",
+      "in": "a\n\n\n\n\n\nb",
+      "out": "a\n\nb"
+    },
+    {
+      "name": "one blank line preserved",
+      "in": "a\n\nb",
+      "out": "a\n\nb"
+    },
+    {
+      "name": "two blank lines preserved",
+      "in": "a\n\n\nb",
+      "out": "a\n\n\nb"
+    },
+    {
+      "name": "whitespace-only lines count as blank",
+      "in": "a\n   \n\t\n  \nb",
+      "out": "a\n\nb"
+    },
+    {
+      "name": "real newline untouched",
+      "in": "a\nb",
+      "out": "a\nb"
+    },
+    {
+      "name": "empty string",
+      "in": "",
+      "out": ""
+    },
+    {
+      "name": "the live corpus shape",
+      "in": "Junior School - 08:00 start\\nSource: Term 3 2026 school calendar",
+      "out": "Junior School - 08:00 start\nSource: Term 3 2026 school calendar"
+    }
+  ],
+  "normalize_single_line": [
+    {
+      "name": "escape flattens, never becomes a newline",
+      "in": "Spring Day\\nGrace",
+      "out": "Spring Day Grace"
+    },
+    {
+      "name": "real newline flattens too",
+      "in": "Spring Day\nGrace",
+      "out": "Spring Day Grace"
+    },
+    {
+      "name": "whitespace collapses",
+      "in": "  Redhill   School  ",
+      "out": "Redhill School"
+    },
+    {
+      "name": "tab escape",
+      "in": "a\\tb",
+      "out": "a b"
+    },
+    {
+      "name": "empty string",
+      "in": "",
+      "out": ""
+    }
+  ],
+  "_create_comment": [
+    "validate_create: the CREATE-only rule, added 2026-09-15 after task 0.11b.",
+    "",
+    "A real agent ingest wrote 22 events all carrying the generic default source,",
+    "so none took a derived id and re-running the document would have duplicated",
+    "all 22. The rule requiring a source was already written into the",
+    "calendar-write skill and deployed; it was not followed. So it moves from an",
+    "instruction into the gate.",
+    "",
+    "CREATE ONLY. The source is half the natural key and the key is derived at",
+    "insert. An update addresses an existing row by id, so requiring it there",
+    "would refuse legitimate repairs of rows written before any of this existed.",
+    "",
+    "Every case here must ALSO satisfy plain validate: these vectors test the",
+    "extra rule, not a replacement for the base one."
+  ],
+  "validate_create": [
+    {
+      "name": "create with a real document source",
+      "accept": true,
+      "body": {
+        "summary": "Team Photos",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia_source": "term-doc:redhill-2026-t3"
+          }
+        }
+      }
+    },
+    {
+      "name": "create with a chat source",
+      "accept": true,
+      "body": {
+        "summary": "Team Photos",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia_source": "chat"
+          }
+        }
+      }
+    },
+    {
+      "name": "create with a gmail source",
+      "accept": true,
+      "body": {
+        "summary": "Team Photos",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia_source": "gmail:dwarikas-booking"
+          }
+        }
+      }
+    },
+    {
+      "name": "create carrying the calendar-mcp generic default",
+      "accept": false,
+      "expect": "claudia_source",
+      "body": {
+        "summary": "Team Photos",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia_source": "calendar-mcp"
+          }
+        }
+      }
+    },
+    {
+      "name": "create carrying the control_centre generic default",
+      "accept": false,
+      "expect": "claudia_source",
+      "body": {
+        "summary": "Team Photos",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia_source": "control_centre"
+          }
+        }
+      }
+    },
+    {
+      "name": "create with no source at all",
+      "accept": false,
+      "expect": "claudia_source",
+      "body": {
+        "summary": "Team Photos",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      }
+    },
+    {
+      "name": "create with a whitespace-only source",
+      "accept": false,
+      "expect": "claudia_source",
+      "body": {
+        "summary": "Team Photos",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia_source": "   "
+          }
+        }
+      }
+    },
+    {
+      "name": "create still subject to the base gate - literal backslash-n",
+      "accept": false,
+      "expect": "backslash",
+      "body": {
+        "summary": "Team Photos",
+        "description": "line one\\nline two",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia_source": "term-doc:redhill-2026-t3"
+          }
+        }
+      }
+    },
+    {
+      "name": "create still subject to the base gate - missing envelope field",
+      "accept": false,
+      "expect": "claudia_loc_confidence",
+      "body": {
+        "summary": "Team Photos",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_loc_policy": "unclassified",
+            "claudia_source": "term-doc:redhill-2026-t3"
+          }
+        }
+      }
+    }
+  ],
+  "_preserve_comment": [
+    "v5 - preserve_stored_envelope: what an UPDATE may and may not overwrite.",
+    "ensure_envelope is fill-if-absent against the OUTGOING body. An update body is",
+    "built from scratch, so every field the caller did not mention is 'absent', gets",
+    "the pessimistic default, and the PATCH writes it over the row's real value.",
+    "Found 2026-09-19 on live rows: the first two vectors are those rows.",
+    "Each case: `body` (after ensure_envelope) + `stored` (the row as read) ->",
+    "`private`, the body's private properties after the call. Exact equality.",
+    "Rules: a GENERIC source ('control_centre', 'calendar-mcp', empty) never replaces",
+    "a stored source; the default policy 'unclassified' never replaces a stored",
+    "classification while the location is unchanged (whitespace/case-insensitive);",
+    "any other policy in the body is a claim and wins; a moved event keeps its",
+    "truthful 'unclassified'; nothing is ever deleted."
+  ],
+  "preserve_stored_envelope": [
+    {
+      "name": "Mercy: the fork gives an all-day school row a start time",
+      "body": {
+        "start": {
+          "dateTime": "2026-10-29T18:00:00+02:00"
+        },
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "calendar-mcp",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "location": "Redhill School, 20 Summit Rd, Morningside, Sandton",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "term-doc:redhill-2026-t3",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "venue_kb",
+            "claudia_venue_id": "redhill-summit",
+            "claudia_venue_kind": "campus_sub_venue"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "term-doc:redhill-2026-t3",
+        "claudia_loc_policy": "resolved",
+        "claudia_loc_confidence": "high",
+        "claudia_loc_source": "venue_kb",
+        "claudia_venue_id": "redhill-summit",
+        "claudia_venue_kind": "campus_sub_venue"
+      }
+    },
+    {
+      "name": "QR 1366: the ingest patches a description, location unchanged",
+      "body": {
+        "location": "OR Tambo International Airport",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "travel-itinerary:travelit:0AAD035",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a",
+            "claudia": "1"
+          }
+        }
+      },
+      "stored": {
+        "location": "OR Tambo International Airport",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "travel-itinerary:travelit:0AAD035",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "geocode",
+            "claudia_loc_placeid": "ChIJwymiBTgUlR4R1iEoeUAcv7M",
+            "claudia_loc_query": "OR Tambo International Airport"
+          }
+        }
+      },
+      "private": {
+        "claudia": "1",
+        "claudia_schema": "2",
+        "claudia_source": "travel-itinerary:travelit:0AAD035",
+        "claudia_loc_policy": "resolved",
+        "claudia_loc_confidence": "high",
+        "claudia_loc_source": "geocode",
+        "claudia_loc_placeid": "ChIJwymiBTgUlR4R1iEoeUAcv7M",
+        "claudia_loc_query": "OR Tambo International Airport"
+      }
+    },
+    {
+      "name": "the same location, differently spaced and cased, is unchanged",
+      "body": {
+        "location": "  or tambo   INTERNATIONAL airport ",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "control_centre",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "location": "OR Tambo International Airport",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "travel-itinerary:travelit:0AAD035",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "geocode",
+            "claudia_loc_placeid": "ChIJwymiBTgUlR4R1iEoeUAcv7M",
+            "claudia_loc_query": "OR Tambo International Airport"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "travel-itinerary:travelit:0AAD035",
+        "claudia_loc_policy": "resolved",
+        "claudia_loc_confidence": "high",
+        "claudia_loc_source": "geocode",
+        "claudia_loc_placeid": "ChIJwymiBTgUlR4R1iEoeUAcv7M",
+        "claudia_loc_query": "OR Tambo International Airport"
+      }
+    },
+    {
+      "name": "QR 650: the location MOVED and nothing placed it - unclassified is true",
+      "body": {
+        "location": "Hamad International Airport (DOH)",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "travel-itinerary:travelit:0AAD035",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "location": "Doha International Airport",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "travel-itinerary:travelit:0AAD035",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "geocode",
+            "claudia_loc_placeid": "ChIJwymiBTgUlR4R1iEoeUAcv7M",
+            "claudia_loc_query": "Doha International Airport"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "travel-itinerary:travelit:0AAD035",
+        "claudia_loc_policy": "unclassified",
+        "claudia_loc_confidence": "n/a"
+      }
+    },
+    {
+      "name": "a location cleared to empty is a move",
+      "body": {
+        "location": "",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "calendar-mcp",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "location": "Redhill School, 20 Summit Rd, Morningside, Sandton",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "term-doc:redhill-2026-t3",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "venue_kb",
+            "claudia_venue_id": "redhill-summit",
+            "claudia_venue_kind": "campus_sub_venue"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "term-doc:redhill-2026-t3",
+        "claudia_loc_policy": "unclassified",
+        "claudia_loc_confidence": "n/a"
+      }
+    },
+    {
+      "name": "the body's own classification is a claim and wins",
+      "body": {
+        "location": "Fourways High School",
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "calendar-mcp",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "venue_kb",
+            "claudia_venue_id": "fourways-hs",
+            "claudia_venue_kind": "physical"
+          }
+        }
+      },
+      "stored": {
+        "location": "Redhill School, 20 Summit Rd, Morningside, Sandton",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "term-doc:redhill-2026-t3",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "venue_kb",
+            "claudia_venue_id": "redhill-summit",
+            "claudia_venue_kind": "campus_sub_venue"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "term-doc:redhill-2026-t3",
+        "claudia_loc_policy": "resolved",
+        "claudia_loc_confidence": "high",
+        "claudia_loc_source": "venue_kb",
+        "claudia_venue_id": "fourways-hs",
+        "claudia_venue_kind": "physical"
+      }
+    },
+    {
+      "name": "on_campus_no_travel is a claim, not a default",
+      "body": {
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "control_centre",
+            "claudia_loc_policy": "on_campus_no_travel",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "location": "Redhill School, 20 Summit Rd, Morningside, Sandton",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "term-doc:redhill-2026-t3",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "venue_kb",
+            "claudia_venue_id": "redhill-summit",
+            "claudia_venue_kind": "campus_sub_venue"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "term-doc:redhill-2026-t3",
+        "claudia_loc_policy": "on_campus_no_travel",
+        "claudia_loc_confidence": "n/a"
+      }
+    },
+    {
+      "name": "a SPECIFIC source in the body is a statement and wins",
+      "body": {
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "gmail:1a0a6b82bef7b2e1",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "location": "Redhill School, 20 Summit Rd, Morningside, Sandton",
+        "extendedProperties": {
+          "private": {
+            "claudia": "1",
+            "claudia_schema": "2",
+            "claudia_source": "term-doc:redhill-2026-t3",
+            "claudia_loc_policy": "resolved",
+            "claudia_loc_confidence": "high",
+            "claudia_loc_source": "venue_kb",
+            "claudia_venue_id": "redhill-summit",
+            "claudia_venue_kind": "campus_sub_venue"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "gmail:1a0a6b82bef7b2e1",
+        "claudia_loc_policy": "resolved",
+        "claudia_loc_confidence": "high",
+        "claudia_loc_source": "venue_kb",
+        "claudia_venue_id": "redhill-summit",
+        "claudia_venue_kind": "campus_sub_venue"
+      }
+    },
+    {
+      "name": "one generic source does not replace another",
+      "body": {
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "control_centre",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "calendar-mcp",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "calendar-mcp",
+        "claudia_loc_policy": "unclassified",
+        "claudia_loc_confidence": "n/a"
+      }
+    },
+    {
+      "name": "a row that predates the envelope changes nothing",
+      "body": {
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "calendar-mcp",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "summary": "an old row",
+        "location": "Somewhere"
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "calendar-mcp",
+        "claudia_loc_policy": "unclassified",
+        "claudia_loc_confidence": "n/a"
+      }
+    },
+    {
+      "name": "a stored row with private properties but no envelope keeps the defaults",
+      "body": {
+        "extendedProperties": {
+          "private": {
+            "claudia_schema": "2",
+            "claudia_source": "calendar-mcp",
+            "claudia_loc_policy": "unclassified",
+            "claudia_loc_confidence": "n/a"
+          }
+        }
+      },
+      "stored": {
+        "location": "Bona Bana Art School",
+        "extendedProperties": {
+          "private": {
+            "kb_school_id": "wda_0123ba51a2654d78"
+          }
+        }
+      },
+      "private": {
+        "claudia_schema": "2",
+        "claudia_source": "calendar-mcp",
+        "claudia_loc_policy": "unclassified",
+        "claudia_loc_confidence": "n/a"
+      }
+    }
+  ]
+}

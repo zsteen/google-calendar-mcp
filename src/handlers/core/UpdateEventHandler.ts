@@ -17,6 +17,8 @@ import {
 } from "../../types/structured-responses.js";
 import { assertWritable } from "../../utils/write-allowlist.js";
 import { resolveSendUpdates } from "../../utils/invite-allowlist.js";
+import { pokeTripFeed } from "./tripFeedStamp.js";
+import { carrySplitSeriesProperties, linkedSeriesRefusal } from "./seriesSplit.js";
 
 export class UpdateEventHandler extends BaseToolHandler {
     private conflictDetectionService: ConflictDetectionService;
@@ -134,6 +136,7 @@ export class UpdateEventHandler extends BaseToolHandler {
 
         // Update the event with resolved calendar ID and merged attendees
         const event = await this.updateEventWithScope(oauth2Client, argsWithMergedAttendees);
+        pokeTripFeed(event.id);
 
         // Create structured response
         const response: UpdateEventResponse = {
@@ -218,7 +221,8 @@ export class UpdateEventHandler extends BaseToolHandler {
         const calendar = helpers.getCalendar();
         const instanceId = helpers.formatInstanceId(args.eventId, args.originalStartTime);
 
-        const requestBody = helpers.buildUpdateRequestBody(args, defaultTimeZone);
+        const stored = await this.storedRow(calendar, args.calendarId, instanceId);
+        const requestBody = helpers.buildUpdateRequestBody(args, defaultTimeZone, stored);
         const conferenceDataVersion = requestBody.conferenceData !== undefined ? 1 : undefined;
         const supportsAttachments = requestBody.attachments !== undefined ? true : undefined;
 
@@ -241,7 +245,8 @@ export class UpdateEventHandler extends BaseToolHandler {
     ): Promise<calendar_v3.Schema$Event> {
         const calendar = helpers.getCalendar();
 
-        const requestBody = helpers.buildUpdateRequestBody(args, defaultTimeZone);
+        const stored = await this.storedRow(calendar, args.calendarId, args.eventId);
+        const requestBody = helpers.buildUpdateRequestBody(args, defaultTimeZone, stored);
         const conferenceDataVersion = requestBody.conferenceData !== undefined ? 1 : undefined;
         const supportsAttachments = requestBody.attachments !== undefined ? true : undefined;
 
@@ -283,6 +288,13 @@ export class UpdateEventHandler extends BaseToolHandler {
             throw new Error('Event does not have recurrence rules');
         }
 
+        // BEFORE step 2, which is the first write: a refusal after the UNTIL is
+        // patched would leave the series truncated with nothing following it.
+        const refusal = linkedSeriesRefusal(originalEvent);
+        if (refusal) {
+            throw new RecurringEventError(refusal, RECURRING_EVENT_ERRORS.LINKED_SERIES_SPLIT);
+        }
+
         // 2. Calculate UNTIL date and update original event
         const untilDate = helpers.calculateUntilDate(args.futureStartDate);
         const updatedRecurrence = helpers.updateRecurrenceWithUntil(originalEvent.recurrence, untilDate);
@@ -294,7 +306,11 @@ export class UpdateEventHandler extends BaseToolHandler {
         });
 
         // 3. Create new recurring event starting from future date
-        const requestBody = helpers.buildUpdateRequestBody(args, defaultTimeZone);
+        const requestBody = helpers.buildUpdateRequestBody(args, defaultTimeZone, originalEvent);
+        // `...requestBody` below replaces the original's private map wholesale
+        // (the envelope guarantees the body has one), so say per key what the
+        // new series keeps - see seriesSplit.ts. Never the natural key.
+        carrySplitSeriesProperties(requestBody, originalEvent, { timeChanged: Boolean(args.start || args.end) });
         
         // Calculate end time if start time is changing
         let endTime = args.end;
@@ -328,6 +344,19 @@ export class UpdateEventHandler extends BaseToolHandler {
 
         if (!response.data) throw new Error('Failed to create new recurring event');
         return response.data;
+    }
+
+    /**
+     * The row about to be patched, read so the envelope can keep what it knows
+     * (`preserveStoredEnvelope`). A failed read is RAISED, not swallowed: a row
+     * that could not be read must not be written over blind, and the patch that
+     * follows would fail on the same id anyway.
+     */
+    private async storedRow(
+        calendar: calendar_v3.Calendar, calendarId: string, eventId: string,
+    ): Promise<calendar_v3.Schema$Event | null> {
+        const response = await calendar.events.get({ calendarId, eventId });
+        return response.data ?? null;
     }
 
     /**

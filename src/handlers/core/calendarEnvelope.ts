@@ -1,0 +1,429 @@
+/**
+ * The Claudia calendar write envelope - schema 2. TypeScript half.
+ *
+ * Spec: `claudia-write-path-spec.md` Phase 0 (D4 + D3), plus addendum-01.
+ *
+ * This is a deliberate PORT of `phase-shared/calendar_envelope/envelope.py`,
+ * not an independent implementation. Claudia writes to one calendar from two
+ * codebases - the Python paths in `control_centre.live_gcal`, and this MCP,
+ * which the agent calls. If the two gates disagree, an event reaches the
+ * calendar through whichever is laxer, and the laxer one would be this side:
+ * the school-document events (and D3's double-escaped descriptions) all came
+ * through here.
+ *
+ * The two halves are held together by `gate-vectors.json`, which both test
+ * suites load and assert identical outcomes against. Canonical copy lives in
+ * the Claudia repo; this fork gets a deployed copy beside this file.
+ *
+ * CANONICAL SOURCE: Claudia repo, phase-shared/calendar_envelope/calendarEnvelope.ts
+ * Deployed to:      google-calendar-mcp-fork/src/handlers/core/calendarEnvelope.ts
+ * Change one, change the other, and bump GATE_VECTORS_VERSION in both.
+ */
+import { calendar_v3 } from 'googleapis';
+
+export const SCHEMA_VERSION = '2';
+/** Must equal `version` in gate-vectors.json and GATE_VECTORS_VERSION in envelope.py. */
+export const GATE_VECTORS_VERSION = '5';
+
+export const K_SCHEMA = 'claudia_schema';
+export const K_SOURCE = 'claudia_source';
+export const K_LOC_POLICY = 'claudia_loc_policy';
+export const K_LOC_CONFIDENCE = 'claudia_loc_confidence';
+export const K_LOC_SOURCE = 'claudia_loc_source';
+export const K_LOC_PLACEID = 'claudia_loc_placeid';
+export const K_VENUE_ID = 'claudia_venue_id';
+export const K_VENUE_KIND = 'claudia_venue_kind';
+export const K_TIME_PRECISION = 'claudia_time_precision';
+export const K_TIME_WINDOW = 'claudia_time_window';
+
+/** The three whose absence is rejected. Everything else is optional. */
+export const REQUIRED_KEYS = [K_SCHEMA, K_LOC_POLICY, K_LOC_CONFIDENCE] as const;
+
+export const POLICY_RESOLVED = 'resolved';
+export const POLICY_ON_CAMPUS = 'on_campus_no_travel';
+export const POLICY_UNRESOLVED = 'unresolved_tbc';
+export const POLICY_UNCLASSIFIED = 'unclassified';
+const LOC_POLICIES = new Set([
+    POLICY_RESOLVED, POLICY_ON_CAMPUS, POLICY_UNRESOLVED, POLICY_UNCLASSIFIED,
+]);
+
+/** `n/a` is a real value, not a synonym for absent - that distinction is D4. */
+const LOC_CONFIDENCES = new Set(['high', 'medium', 'low', 'n/a']);
+const LOC_SOURCES = new Set(['venue_kb', 'geocode', 'document', 'user_confirmed']);
+const TIME_PRECISIONS = new Set(['exact', 'window', 'placeholder']);
+const VENUE_KINDS = new Set(['physical', 'campus_sub_venue', 'broadcast', 'virtual', 'none']);
+
+/** Policies whose definition is "location intentionally empty". */
+const EMPTY_LOCATION_POLICIES = new Set([POLICY_ON_CAMPUS, POLICY_UNRESOLVED]);
+
+/** Lowercase word characters only: a dot or an `=` breaks the events.list filter. */
+const KEY_RE = /^[a-z0-9_]+$/;
+
+/**
+ * Which keys in the shared `private` map are OURS to be strict about. The map
+ * also holds `kb_school_id`, `trip_id`, the legacy `claudia` stamp, and
+ * whatever a third-party caller puts there.
+ */
+const ENVELOPE_KEY_PREFIX = 'claudia';
+
+/**
+ * D5, narrowed. The addendum also proposed `^Verify` and `^Check `; across all
+ * 516 events in the corpus those matched exactly one description - "Check out
+ * this video..." - a false positive, and they would reject a correctly-parsed
+ * booking reading "Check in 14:00, confirmation 1090495636". Backstop only:
+ * a task should never be built as an event payload in the first place.
+ */
+const INSTRUCTION_STUB_RE = /^\s*Add\b.*\bto calendar/i;
+
+/** The two characters, not the escape sequence. */
+const BACKSLASH_N = '\\n';
+
+export class PayloadValidationError extends Error {
+    public readonly problems: string[];
+    constructor(problems: string[]) {
+        super(problems.join('; '));
+        this.name = 'PayloadValidationError';
+        this.problems = problems;
+    }
+}
+
+/**
+ * Repair a description at the write boundary (D3).
+ *
+ * Decode the literal escapes (`\r\n` first, or it leaves a stray carriage
+ * return), normalise real CRLF, strip trailing whitespace per line, then
+ * collapse runs of three or more blank lines to one.
+ *
+ * Counted in newlines, not blank lines: N blank lines are N+1 newlines, so
+ * "three or more blank lines" is four or more newlines and "one blank line" is
+ * two. One and two blank lines are left exactly as written - existing
+ * descriptions use a two-line gap to separate the Source footer from the body.
+ */
+export function normalizeDescription(description: string | null | undefined): string | null | undefined {
+    if (description === null || description === undefined) return description;
+    let text = description;
+    text = text.split('\\r\\n').join('\n');
+    text = text.split('\\n').join('\n');
+    text = text.split('\\t').join('\t');
+    text = text.split('\r\n').join('\n').split('\r').join('\n');
+    text = text.split('\n').map((line) => line.replace(/[^\S\n]+$/, '')).join('\n');
+    text = text.replace(/\n{4,}/g, '\n\n');
+    return text;
+}
+
+/**
+ * Normalise a field that must not contain line breaks - `summary`, `location`.
+ *
+ * Running the description normaliser over a TITLE would turn a literal
+ * backslash-n into a REAL newline in the event title, which is worse than the
+ * bug it fixes: the calendar UI would render a two-line title. A title has no
+ * line breaks to preserve, so flattening is the honest repair.
+ */
+export function normalizeSingleLine(text: string | null | undefined): string | null | undefined {
+    if (text === null || text === undefined) return text;
+    let out = text;
+    out = out.split('\\r\\n').join(' ').split('\\n').join(' ').split('\\t').join(' ');
+    out = out.replace(/[\r\n\t]/g, ' ');
+    return out.split(/\s+/).filter((s) => s.length > 0).join(' ');
+}
+
+export function hasLiteralBackslashN(value: unknown): boolean {
+    return typeof value === 'string' && value.includes(BACKSLASH_N);
+}
+
+function privateProps(body: calendar_v3.Schema$Event): Record<string, string> {
+    const ext = body.extendedProperties ?? (body.extendedProperties = {});
+    const priv = ext.private ?? (ext.private = {});
+    return priv as Record<string, string>;
+}
+
+/**
+ * Fill in any MISSING envelope field; never overwrite one already present.
+ *
+ * Same contract as the Python `ensure_envelope`: the write boundary supplies
+ * the pessimistic defaults (`unclassified` / `n/a`), and a caller that knows
+ * better keeps its own values. `validatePayload` still runs afterwards, so this
+ * is a default, not a loophole. Foreign keys - `claudia`, `kb_school_id`,
+ * `trip_id` - are untouched.
+ */
+export function ensureEnvelope(body: calendar_v3.Schema$Event, source?: string): void {
+    const priv = privateProps(body);
+    const defaults: Record<string, string> = {
+        [K_SCHEMA]: SCHEMA_VERSION,
+        [K_SOURCE]: source && source.trim() ? source : 'calendar-mcp',
+        [K_LOC_POLICY]: POLICY_UNCLASSIFIED,
+        [K_LOC_CONFIDENCE]: 'n/a',
+    };
+    for (const [key, value] of Object.entries(defaults)) {
+        if (priv[key] === undefined || priv[key] === null || String(priv[key]).trim() === '') {
+            priv[key] = value;
+        }
+    }
+}
+
+/** Everything that together says "this is where the event is, and how we know". */
+const LOC_CLAIM_KEYS = [
+    K_LOC_POLICY, K_LOC_CONFIDENCE, K_LOC_SOURCE, K_LOC_PLACEID,
+    'claudia_loc_verified', 'claudia_loc_query', K_VENUE_ID, K_VENUE_KIND,
+] as const;
+
+/** Whitespace- and case-insensitive; `toLowerCase` to match Python's `lower()`. */
+function sameLocation(a: unknown, b: unknown): boolean {
+    const norm = (v: unknown) =>
+        String(v ?? '').split(/\s+/).filter((s) => s.length > 0).join(' ').toLowerCase();
+    return norm(a) === norm(b);
+}
+
+/**
+ * On an UPDATE, keep what the stored row knows that this write does not.
+ *
+ * `ensureEnvelope` is fill-if-absent against the OUTGOING body. On a create that
+ * is the whole story. An update body is built from scratch, so "absent" is true
+ * of every field the caller did not mention: the defaults are filled in and the
+ * PATCH writes them over the row's real values. Found 2026-09-19 - giving the
+ * two 'Mercy' performances a start time through update-event turned
+ * `term-doc:redhill-2026-t3 / resolved / high` into `calendar-mcp /
+ * unclassified / n/a`. `claudia_source` scopes which rows a source's reconcile
+ * may touch, so that is not bookkeeping.
+ *
+ * Same two rules as the Python `preserve_stored_envelope`, held together by the
+ * `preserve_stored_envelope` vectors. Call it after `ensureEnvelope`, with the
+ * row as read:
+ *
+ *   SOURCE    a generic source never replaces a stored one; a specific source in
+ *             the body is a statement and wins.
+ *   LOCATION  the default `unclassified` never replaces a stored classification
+ *             WHILE THE LOCATION IS UNCHANGED. A move the classifier could not
+ *             place is honestly `unclassified`; any other policy in the body is
+ *             a claim and wins.
+ *
+ * Never deletes a field, and a row with no envelope changes nothing.
+ */
+export function preserveStoredEnvelope(
+    body: calendar_v3.Schema$Event, stored: calendar_v3.Schema$Event | null | undefined,
+): void {
+    const kept = (stored?.extendedProperties?.private ?? {}) as Record<string, unknown>;
+    if (!stored || Object.keys(kept).length === 0) return;
+    const priv = privateProps(body);
+    const text = (v: unknown) => String(v ?? '').trim();
+
+    // GENERIC_SOURCES (below, shared with the create rule): what a write path
+    // calls itself when nobody said anything more specific. Provenance, not a
+    // claim - so neither may replace the source the row was created under.
+    const bodySource = text(priv[K_SOURCE]);
+    const storedSource = text(kept[K_SOURCE]);
+    if (storedSource && (bodySource === '' || GENERIC_SOURCES.includes(bodySource))) {
+        priv[K_SOURCE] = storedSource;
+    }
+
+    const storedPolicy = text(kept[K_LOC_POLICY]);
+    const noClaim = (text(priv[K_LOC_POLICY]) || POLICY_UNCLASSIFIED) === POLICY_UNCLASSIFIED;
+    const moved = Object.prototype.hasOwnProperty.call(body, 'location')
+        && body.location !== undefined
+        && !sameLocation(body.location, stored.location);
+    if (noClaim && !moved && storedPolicy && storedPolicy !== POLICY_UNCLASSIFIED) {
+        for (const key of LOC_CLAIM_KEYS) {
+            const value = text(kept[key]);
+            if (!value) continue;
+            if (key === K_LOC_POLICY || key === K_LOC_CONFIDENCE) {
+                priv[key] = value;                  // the pair the default overwrote
+            } else if (!text(priv[key])) {
+                priv[key] = value;
+            }
+        }
+    }
+}
+
+/**
+ * The single gate on every calendar write. Asserts; never repairs.
+ *
+ * `normalizeDescription` runs upstream. If the backslash check fires here it
+ * means normalisation was skipped, and that is the thing to go and fix - loud
+ * failure beats a silent bad row.
+ */
+export function validatePayload(body: calendar_v3.Schema$Event): void {
+    const problems: string[] = [];
+
+    const ext = body.extendedProperties;
+    let priv: Record<string, unknown> = {};
+    if (!ext || typeof ext !== 'object') {
+        problems.push('missing extendedProperties (schema-2 envelope required on every write)');
+    } else if (!ext.private || typeof ext.private !== 'object') {
+        problems.push('missing extendedProperties.private (schema-2 envelope required)');
+    } else {
+        priv = ext.private as Record<string, unknown>;
+    }
+
+    for (const key of REQUIRED_KEYS) {
+        const value = priv[key];
+        if (value === undefined || value === null || String(value).trim() === '') {
+            problems.push(`missing required envelope field ${key}`);
+        }
+    }
+
+    const schema = priv[K_SCHEMA];
+    if (schema !== undefined && schema !== null && String(schema) !== SCHEMA_VERSION) {
+        problems.push(`${K_SCHEMA} is ${JSON.stringify(schema)}, expected "${SCHEMA_VERSION}"`);
+    }
+
+    const policy = priv[K_LOC_POLICY];
+    if (policy !== undefined && policy !== null && !LOC_POLICIES.has(String(policy))) {
+        problems.push(`${K_LOC_POLICY} is ${JSON.stringify(policy)}, expected one of ${[...LOC_POLICIES].sort().join(', ')}`);
+    }
+
+    const confidence = priv[K_LOC_CONFIDENCE];
+    if (confidence !== undefined && confidence !== null && !LOC_CONFIDENCES.has(String(confidence))) {
+        problems.push(`${K_LOC_CONFIDENCE} is ${JSON.stringify(confidence)}, expected one of ${[...LOC_CONFIDENCES].sort().join(', ')}`);
+    }
+
+    // `privateExtendedProperty=name=value` splits on the FIRST `=`, so an `=`
+    // anywhere makes the property unfilterable - which costs us the auditor.
+    //
+    // Scoped to CLAUDIA's OWN KEYS. `extendedProperties.private` is a shared
+    // map: `kb_school_id` and `trip_id` live there, and third-party callers put
+    // their own keys there too. An earlier draft checked every key and rejected
+    // an entire write because a caller passed `trackingId` - camelCase,
+    // perfectly legitimate, and none of our business. We query on our own keys,
+    // so we only get to be strict about our own keys.
+    for (const [key, value] of Object.entries(priv)) {
+        if (!key.startsWith(ENVELOPE_KEY_PREFIX)) continue;
+        if (!KEY_RE.test(key)) {
+            problems.push(`envelope key ${JSON.stringify(key)} must be lowercase [a-z0-9_] - no dots, no '='`);
+        }
+        if (String(value).includes('=')) {
+            problems.push(`envelope value for ${JSON.stringify(key)} contains '=', which breaks the list filter`);
+        }
+    }
+
+    const policyStr = policy === undefined || policy === null ? '' : String(policy);
+    const location = typeof body.location === 'string' ? body.location.trim() : '';
+
+    if (policyStr === POLICY_RESOLVED) {
+        // Caution 9 is about GEOCODER results specifically. Addendum-01 D7 makes
+        // place_id an attribute rather than identity - sub-venues have different
+        // place_ids or none, the KB is hand-seeded, and some venues are not
+        // geocodable at all - so anything else may identify by venue_id instead.
+        const locSource = String(priv[K_LOC_SOURCE] ?? '').trim();
+        const placeId = String(priv[K_LOC_PLACEID] ?? '').trim();
+        const venueId = String(priv[K_VENUE_ID] ?? '').trim();
+        if (locSource === 'geocode' && !placeId) {
+            problems.push(`${K_LOC_POLICY}="resolved" with ${K_LOC_SOURCE}="geocode" requires a non-empty ${K_LOC_PLACEID} - a geocoder result without one is a guess`);
+        } else if (!placeId && !venueId) {
+            problems.push(`${K_LOC_POLICY}="resolved" requires a venue identity: ${K_LOC_PLACEID} or ${K_VENUE_ID}`);
+        }
+    }
+
+    if (EMPTY_LOCATION_POLICIES.has(policyStr) && location) {
+        problems.push(`${K_LOC_POLICY}="${policyStr}" means the location is intentionally empty, but location is ${JSON.stringify(location)}`);
+    }
+
+    if (policyStr === POLICY_UNCLASSIFIED && confidence !== undefined && confidence !== null
+        && String(confidence) !== 'n/a') {
+        problems.push(`${K_LOC_POLICY}="unclassified" requires ${K_LOC_CONFIDENCE}="n/a", got ${JSON.stringify(confidence)}`);
+    }
+
+    for (const [key, vocab] of [
+        [K_LOC_SOURCE, LOC_SOURCES], [K_TIME_PRECISION, TIME_PRECISIONS], [K_VENUE_KIND, VENUE_KINDS],
+    ] as Array<[string, Set<string>]>) {
+        const value = priv[key];
+        if (value !== undefined && value !== null && !vocab.has(String(value))) {
+            problems.push(`${key} is ${JSON.stringify(value)}, expected one of ${[...vocab].sort().join(', ')}`);
+        }
+    }
+
+    if (String(priv[K_TIME_PRECISION] ?? '') === 'window'
+        && !String(priv[K_TIME_WINDOW] ?? '').trim()) {
+        problems.push(`${K_TIME_PRECISION}="window" requires ${K_TIME_WINDOW}`);
+    }
+
+    // D3 across every text field: the bug is a serialization boundary, not a
+    // field (addendum-01 OI-2).
+    for (const field of ['summary', 'location', 'description'] as const) {
+        const value = body[field];
+        if (value !== undefined && value !== null && typeof value !== 'string') {
+            problems.push(`${field} must be a string, got ${typeof value}`);
+        } else if (hasLiteralBackslashN(value)) {
+            problems.push(`${field} contains a literal backslash-n - normalizeDescription() was not applied at this write boundary`);
+        }
+    }
+
+    if (typeof body.description === 'string' && INSTRUCTION_STUB_RE.test(body.description)) {
+        problems.push(`description is an instruction to create this event, not a description of it (${JSON.stringify(body.description.slice(0, 60))}) - route it to the Action Inbox as a task. A block asserting a commitment nobody has made is worse than no block.`);
+    }
+
+    if (problems.length) throw new PayloadValidationError(problems);
+}
+
+/**
+ * Sources that are not sources: what a write path calls itself when the caller
+ * said nothing. `ensureEnvelope` fills one in so a write is never unattributed,
+ * which is right - but `deriveIdFromBody` then excludes exactly these values,
+ * so a create carrying one gets a SERVER-ASSIGNED id and is not idempotent.
+ */
+export const GENERIC_SOURCES = ['calendar-mcp', 'control_centre'];
+
+/**
+ * The gate for a CREATE specifically: everything `validatePayload` asserts, plus
+ * a real `claudia_source`.
+ *
+ * WHY CREATE-ONLY. The source is half the natural key, and the key is only ever
+ * derived at insert. An update addresses a row that already exists, by id, so
+ * demanding the caller re-declare a document it may know nothing about would
+ * refuse legitimate repairs - including the backfills that fix rows written
+ * before any of this existed.
+ *
+ * WHY A REFUSAL AND NOT A WARNING. Measured on 2026-09-15: a real agent ingest
+ * of the Term 3 document produced 22 events, every one carrying `calendar-mcp`,
+ * so none got a derived id and re-running the document would have duplicated all
+ * 22. The rule requiring a source has been written in `skills/calendar-write`
+ * since 2026-09-14, in detail, deployed live - and was simply not followed. That
+ * is the whole lesson: an instruction is not an enforcement. Nothing short of a
+ * refusal changes what reaches the calendar.
+ *
+ * The message names the vocabulary, because the caller is usually a model and a
+ * refusal it cannot act on is just an outage.
+ */
+export function validateCreatePayload(body: calendar_v3.Schema$Event): void {
+    validatePayload(body);
+    const priv = (body.extendedProperties?.private ?? {}) as Record<string, string>;
+    const source = (priv[K_SOURCE] ?? '').trim();
+    if (!source || GENERIC_SOURCES.includes(source)) {
+        throw new PayloadValidationError([
+            `${K_SOURCE} is ${source ? `the generic default ${JSON.stringify(source)}` : 'missing'}, `
+            + 'so this event would take a server-assigned id and a re-ingest of the same '
+            + 'source would duplicate it. Name where it came from: '
+            + '"term-doc:redhill-2026-t3" for a school term document, "doc:<slug>" for '
+            + 'another document, "gmail:<threadId>" for an email (the Gmail threadId '
+            + 'from the tool result, e.g. gmail:1a0a6b82bef7b2e1 - never a slug you '
+            + 'made up), "whatsapp:<slug>" for a forwarded message, or "chat" when Zig '
+            + 'asked directly with no document behind it. If Zig asks you to add '
+            + "something FROM an email, the source is that email's thread, not chat. "
+            + 'Use the SAME id every time you re-read the same document.',
+        ]);
+    }
+}
+
+/**
+ * Normalise, stamp, then gate - the whole Phase 0 write boundary in one call.
+ *
+ * The order is the contract and is not interchangeable. Normalise first so the
+ * ordinary D3 case is repaired silently; validate last so that if the escape
+ * assertion ever fires, it means normalisation was skipped somewhere.
+ */
+export function applyWriteEnvelope(
+    body: calendar_v3.Schema$Event, source?: string, opts?: { isCreate?: boolean },
+): void {
+    if (typeof body.description === 'string') {
+        body.description = normalizeDescription(body.description) as string;
+    }
+    if (typeof body.summary === 'string') {
+        body.summary = normalizeSingleLine(body.summary) as string;
+    }
+    if (typeof body.location === 'string') {
+        body.location = normalizeSingleLine(body.location) as string;
+    }
+    ensureEnvelope(body, source);
+    // Default false: an existing caller that has not been taught the difference
+    // keeps the old, weaker contract rather than silently gaining a refusal.
+    if (opts?.isCreate) validateCreatePayload(body); else validatePayload(body);
+}

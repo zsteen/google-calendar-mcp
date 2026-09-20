@@ -366,12 +366,22 @@ describe('RecurringEventHelpers', () => {
 
       const result = helpers.buildUpdateRequestBody(args);
 
-      expect(result).toEqual({
+      // Every write now carries the Trip Feed stamp and the Phase 0 schema-2
+      // envelope, so an exact-equality assertion here was asserting the ABSENCE
+      // of the envelope by accident. The envelope itself is covered by
+      // calendarEnvelope.test.ts against the shared vectors; what THIS test is
+      // about is that the caller's fields are built correctly.
+      expect(result).toMatchObject({
         summary: 'Updated Meeting',
         description: 'Updated description',
         location: 'New Location',
         colorId: '9'
-        // No start/end should be present
+      });
+      expect(result.start).toBeUndefined();      // no start/end should be present
+      expect(result.end).toBeUndefined();
+      expect(result.extendedProperties?.private).toMatchObject({
+        claudia: '1',                            // Trip Feed stamp survives
+        claudia_schema: '2'                      // ...alongside the envelope
       });
     });
 
@@ -385,7 +395,7 @@ describe('RecurringEventHelpers', () => {
 
       const result = helpers.buildUpdateRequestBody(args);
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         summary: 'Meeting',
         start: {
           dateTime: '2024-06-15T10:00:00-07:00',
@@ -398,6 +408,9 @@ describe('RecurringEventHelpers', () => {
           // No timeZone when datetime already includes timezone
         }
       });
+      // No timeZone key when the datetime already carries its offset.
+      expect(result.start?.timeZone).toBeUndefined();
+      expect(result.end?.timeZone).toBeUndefined();
     });
 
     it('should handle partial time changes', () => {
@@ -428,7 +441,7 @@ describe('RecurringEventHelpers', () => {
       const defaultTimeZone = 'Europe/London';
       const result = helpers.buildUpdateRequestBody(args, defaultTimeZone);
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         summary: 'Meeting',
         start: {
           dateTime: '2024-06-15T10:00:00',

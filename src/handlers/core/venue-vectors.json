@@ -1,0 +1,1769 @@
+{
+ "version": "1",
+ "_comment": [
+  "Conformance vectors for venue resolution. Python `calendar_envelope.venues.VenueGraph`",
+  "is the reference; `venueKb.ts` in the calendar MCP fork must agree on every case.",
+  "Regenerate with scripts/gen_venue_vectors.py; never hand-edit expected values."
+ ],
+ "venues": [
+  {
+   "id": "home",
+   "name": "Home",
+   "address": "44B Middle Road, Morningside, Sandton, Gauteng, 2196, South Africa",
+   "aliases": [
+    "home",
+    "my house",
+    "the house",
+    "at home",
+    "round at ours",
+    "ours",
+    "44B Middle Road"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "redhill-summit",
+   "name": "Redhill School (Summit entrance)",
+   "address": "20 Summit Road, Morningside, Sandton, 2196, South Africa",
+   "aliases": [
+    "Redhill",
+    "Redhill School",
+    "Redhill Senior",
+    "school",
+    "the school",
+    "Eva's school",
+    "Grace's school",
+    "Summit",
+    "Summit entrance",
+    "Summit Road",
+    "Summit Rd",
+    "the astro",
+    "Redhill astro",
+    "astro",
+    "hockey",
+    "hockey practice",
+    "Summit Hockey Fields",
+    "Redhill — Summit Hockey Fields",
+    "Redhill - Summit Hockey Fields"
+   ],
+   "parent_venue": "redhill-campus",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "id": "redhill-wrn",
+   "name": "Redhill School (West Road North entrance)",
+   "address": "96 W Rd N, Morningside, Sandton, 2199, South Africa",
+   "aliases": [
+    "WRN",
+    "West Road North",
+    "West Road North entrance",
+    "Redhill WRN",
+    "W Rd N",
+    "Oval Field",
+    "Redhill Oval",
+    "Oval"
+   ],
+   "parent_venue": "redhill-campus",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "id": "redhill-outspan",
+   "name": "Redhill School (Outspan fields)",
+   "address": "School Road, Morningside, Sandton, 2057, South Africa",
+   "aliases": [
+    "Outspan",
+    "Outspan courts",
+    "Outspan fields",
+    "Redhill Outspan",
+    "Redhill school outspan fields"
+   ],
+   "parent_venue": "redhill-campus",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "id": "bona-bana-art",
+   "name": "Bona Bana Art School",
+   "address": "138 Kelvin Drive, Morningside Manor, Johannesburg, South Africa",
+   "aliases": [
+    "art",
+    "Bona Bana",
+    "Bona Bana Art School",
+    "Grace's art",
+    "art school"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "mcc-hockey",
+   "name": "Morningside Country Club",
+   "address": "1 De La Rey Rd, Morningside, Sandton, 2196, South Africa",
+   "aliases": [
+    "MCC",
+    "MCC hockey",
+    "club hockey",
+    "Morningside Country Club"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "intercare-medimix",
+   "name": "Intercare Day Hospital Sandton — MediMix",
+   "address": "200 Rivonia Rd, Morningside, Sandton, 2196, South Africa",
+   "aliases": [
+    "GP",
+    "doctor",
+    "doctor's",
+    "Intercare",
+    "Intercare day hospital",
+    "Intercare day hospital Sandton",
+    "MediMix",
+    "MediMix Sandton",
+    "200 Rivonia"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "therapy-nhc",
+   "name": "NHC Bryanston (Mario — therapist)",
+   "address": "2988 Winnie Mandela Dr, Bryanston, Sandton, 2191, South Africa",
+   "aliases": [
+    "therapy",
+    "Mario",
+    "therapist",
+    "NHC",
+    "NHC Bryanston"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "dentist-smile12",
+   "name": "Smile12 Dentist",
+   "address": "1 Bryanston Dr, Bryanston, Sandton, 2191, South Africa",
+   "aliases": [
+    "dentist",
+    "Smile12",
+    "Smile 12"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "sandton-city",
+   "name": "Sandton City Mall",
+   "address": "Rivonia Rd & Sandton Dr, Sandton, 2196, South Africa",
+   "aliases": [
+    "Sandton City",
+    "Sandton City Mall",
+    "the mall",
+    "movies",
+    "the movies"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "morningside-shopping-centre",
+   "name": "Morningside Shopping Centre",
+   "address": "Cnr of Rivonia and Outspan Roads, Morningside, Sandton, 2196, South Africa",
+   "aliases": [
+    "Morningside Shopping Centre",
+    "Morningside Centre",
+    "Morningside shops"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "naked-coffee",
+   "name": "Naked Coffee",
+   "address": "Cnr of Rivonia and Outspan Roads, Morningside, Sandton, 2196, South Africa",
+   "aliases": [
+    "Naked",
+    "Naked coffee",
+    "Naked coffee shop"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "tashas-morningside",
+   "name": "Tasha's (Morningside)",
+   "address": "Cnr of Rivonia and Outspan Roads, Morningside, Sandton, 2196, South Africa",
+   "aliases": [
+    "Tasha's",
+    "Tashas"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "pomodoro-morningside",
+   "name": "Pomodoro (Morningside)",
+   "address": "Cnr of Rivonia and Outspan Roads, Morningside, Sandton, 2196, South Africa",
+   "aliases": [
+    "Pomodoro"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "club-como-morningside",
+   "name": "Club Como (Morningside)",
+   "address": "Cnr of Rivonia and Outspan Roads, Morningside, Sandton, 2196, South Africa",
+   "aliases": [
+    "Club Como",
+    "Como"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "fourways-mall",
+   "name": "Four Ways Mall",
+   "address": "11 Ruby Cl, Witkoppen, Sandton, 2068, South Africa",
+   "aliases": [
+    "Fourways",
+    "Fourways Mall",
+    "Four Ways Mall",
+    "Bounce",
+    "Bounce Fourways"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-b1e662a1",
+   "name": "Café Del Sol",
+   "address": "45 Jan Smuts Ave, Hyde Park, Johannesburg",
+   "aliases": [
+    "Cafe Del Sol",
+    "Del Sol"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-c3045e4d",
+   "name": "MusicWorks Hyde Park",
+   "address": "45 Jan Smuts Ave, Hyde Park",
+   "aliases": [
+    "MusicWorks",
+    "MusicWorks Hyde Park"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-2961ebcf",
+   "name": "Bambanani Melville",
+   "address": "85 4th Ave, Melville, Johannesburg, 2109",
+   "aliases": [
+    "Bambanani"
+   ],
+   "place_id": "ChIJwTdauI8LlR4RC-odtvSC4PQ",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-f381bac4",
+   "name": "24 Pitt Rd, Bryanston",
+   "address": "24 Pitt Rd, Bryanston, Sandton, 2191",
+   "aliases": [
+    "Isabella's house",
+    "Izzy's house",
+    "Isabella",
+    "Izzy",
+    "Isabella house",
+    "Izzy house",
+    "24 Pitt Rd Bryanston",
+    "24 Pitt Road Bryanston",
+    "Pitt Road Bryanston"
+   ],
+   "place_id": "ChIJc_nWrr5zlR4RCpPadC45nqk",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-bf90c7d8",
+   "name": "The Bashie Golf Lodge",
+   "address": "792, Highland Gate Golf and Trout Estate, Dullstroom, 0001",
+   "aliases": [
+    "The Bashie",
+    "Bashie Highland Gate"
+   ],
+   "place_id": "ChIJffyvN8H56R4RhRV1goeqzHo",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-7fead97c",
+   "name": "Milk Bar Parkmore",
+   "address": "11 Holt St, East, Sandton, 2196",
+   "aliases": [
+    "Milk Bar",
+    "Milkbar",
+    "Milkbar Parkmore"
+   ],
+   "place_id": "ChIJzwz_u2FzlR4RA9y1aR6MQYA",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-23c410cd",
+   "name": "Derek and Tessa Jennings",
+   "address": "67 Greenside Rd, Greenside, Johannesburg, 2034",
+   "aliases": [
+    "Tessa and Derek's",
+    "Derek and Tessa's",
+    "Steven-Jennings"
+   ],
+   "place_id": "ChIJi5KZH34LlR4R_aDGQ2M5bHQ",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-7228a660",
+   "name": "Park Hyatt Johannesburg",
+   "address": "6 Tottenham Ave, Melrose Estate, Johannesburg, 2196",
+   "aliases": [
+    "Room 32 Park Hyatt",
+    "Park Hyatt",
+    "Room 32"
+   ],
+   "place_id": "ChIJ8StdbgANlR4REIDLXyxEsqE",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-42be72e8",
+   "name": "Wine Menu",
+   "address": "Corner Appel and Desmond, 3 Desmond Rd, Kramerville, Johannesburg, 2090",
+   "aliases": [
+    "Wine Menu Kramerville",
+    "Wine Menu Sandton"
+   ],
+   "place_id": "ChIJ81JEAeAMlR4RGsEZVPYWslo",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-b66d8687",
+   "name": "Mr Pants Wine Bar",
+   "address": "Shop 7, Delta Central, 74 Hillcrest Ave, Blairgowrie, Randburg, 2194",
+   "aliases": [
+    "Mr Pants",
+    "Mr. Pants",
+    "Mr Pant's",
+    "Mr. Pant's wine bar"
+   ],
+   "place_id": "ChIJ7UyCp4l1lR4RB6q4Zt7bh70",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-b1c4a0f4",
+   "name": "St Stithians College",
+   "address": "40 Peter Place, Lyme Park, Sandton, 2060",
+   "aliases": [
+    "St Stithians",
+    "Stithians",
+    "St Stithians hockey",
+    "St Stithians College Hockey"
+   ],
+   "place_id": "ChIJfa3gUYN0lR4RclED5Gl12os",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-79f3f2ae",
+   "name": "De La Salle Holy Cross College Junior School",
+   "address": "13th St & Braemar Road, Victory Park, Randburg, 2195",
+   "aliases": [
+    "DLSHCCJ",
+    "De La Salle Junior",
+    "De La Salle Holy Cross Junior"
+   ],
+   "place_id": "ChIJH9IzEkILlR4RuEkIPdra6as",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-77d8b683",
+   "name": "Sandton Shul",
+   "address": "Longdon Ave, Morningside, Sandton, 2057",
+   "aliases": [
+    "Sandton Synagogue",
+    "BHH Sandton Synagogue Centre"
+   ],
+   "place_id": "ChIJs8Cg2RhzlR4R_SH48ArL0es",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-6cd801d5",
+   "name": "Thesen Island",
+   "address": "Thesen Island, Knysna, 6571",
+   "aliases": [
+    "Thesen Island Knysna",
+    "Thesen Islands"
+   ],
+   "place_id": "ChIJUym0flnqeB4Riw9CxWjTbZE",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-cb6cd7f0",
+   "name": "The Happy Bunny Retreat",
+   "address": "2 Connaught Avenue, Sandringham, Johannesburg",
+   "aliases": [
+    "Happy Bunny Retreat",
+    "bunny retreat"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-c1019531",
+   "name": "Château Saint-Laurent",
+   "address": "33112 Saint-Laurent-Médoc, France",
+   "aliases": [
+    "La Grande Suite du Château Saint-Laurent"
+   ],
+   "place_id": "ChIJQezRc2zDAUgRx2DVm5lWIyQ",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-0a5a3640",
+   "name": "BX Wine Bar & Shop",
+   "address": "The Marc, Shop UR 9, 129 Rivonia Rd, Sandown, Sandton, 2196",
+   "aliases": [
+    "BX Wine Bar",
+    "Bx Wine Bar & Shop",
+    "bxwinebar"
+   ],
+   "place_id": "ChIJHdX9CJJzlR4RCSPf9dV5Wtc",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-07b9b647",
+   "name": "Du Toit — Kirsten & Mark",
+   "address": "28 Judy Cres, Morningside Manor, Sandton, 2057",
+   "aliases": [
+    "28 Judy Crescent",
+    "Kirsten and Mark",
+    "Mila Du Toit",
+    "Du Toit house"
+   ],
+   "place_id": "ChIJ0fQ82-RylR4RzMM83g1ZBDw",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-133aaa33",
+   "name": "Randburg Astroturf",
+   "address": "Praegville, Randburg, 2194",
+   "aliases": [
+    "Randburg Hockey Club",
+    "Randburg Astro",
+    "Randburg Astroturf"
+   ],
+   "place_id": "ChIJd5ztL-Z0lR4RwQ9gJ7kjGGw",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-d28d14a2",
+   "name": "Grayston Prep",
+   "address": "Gillard St, Morningside, Johannesburg, 2146",
+   "aliases": [
+    "Grayston Preparatory School",
+    "Grayston Preparatory"
+   ],
+   "place_id": "ChIJXXhsvydzlR4RfW6ECCcyJwE",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-4e0aec90",
+   "name": "HeronBridge College",
+   "address": "No 36 on the R114 Nietgedacht, Fourways, Johannesburg, 1747",
+   "aliases": [
+    "Heronbridge"
+   ],
+   "place_id": "ChIJbTiOCyl4lR4RhNefEG0UdjI",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-116b2813",
+   "name": "Tightline Sandton Gate",
+   "address": "25 Minerva Ave, Glenadrienne, Sandton, 2196",
+   "aliases": [
+    "Tightline",
+    "Tightline Sandton"
+   ],
+   "place_id": "ChIJb9OvzhZzlR4RG3ie2kahC3c",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-52b2f8c7",
+   "name": "Glow4Events",
+   "address": "Kelvin Dr & Bowling Ave, Morningside Manor, Johannesburg, 2052",
+   "aliases": [
+    "Glow 4 Events",
+    "Morning Glen Glow4Events"
+   ],
+   "place_id": "ChIJAyGuYABzlR4RjOoh3bW4fHo",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-d5d8017f",
+   "name": "The Drop Indoor Skydiving",
+   "address": "23 Ridge Rd, Vorna Valley, Midrand, 1686",
+   "aliases": [],
+   "place_id": "ChIJN9RXdxZxlR4RXt4t9O_N3Us",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-b83e4d94",
+   "name": "Sabi River Eco Estate",
+   "address": "133 Dragonfly Drive, Hazyview, 1242",
+   "aliases": [
+    "Sabi River Eco Estate",
+    "Sabi River Guesthouse"
+   ],
+   "place_id": "ChIJdYE1hjKdwh4RrCE_x118AOk",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-b88ea256",
+   "name": "Beaulieu College",
+   "address": "107 Maple Rd, Kyalami AH, Midrand, 1684",
+   "aliases": [
+    "Beaulieu"
+   ],
+   "place_id": "ChIJZSj_swJxlR4RakaGITf_HpM",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-d8827c84",
+   "name": "Brescia House School",
+   "address": "14 Sloane St, Bryanston, Sandton, 2191",
+   "aliases": [
+    "Brescia House",
+    "Brescia"
+   ],
+   "place_id": "ChIJy9IVCAl0lR4Rthfp6C53fhI",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-f0fb6c96",
+   "name": "Dainfern College",
+   "address": "96 Broadacres Dr, Dainfern, Johannesburg, 2055",
+   "aliases": [
+    "Dainfern"
+   ],
+   "place_id": "ChIJd2V-_NN2lR4RUJC5EVygHXE",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-6df95e83",
+   "name": "Roedean School",
+   "address": "Princess of Wales Terrace, Parktown, Johannesburg, 2193",
+   "aliases": [
+    "Roedean",
+    "Roedean Senior School"
+   ],
+   "place_id": "ChIJEX7KMz8MlR4Rfb635cO29Tg",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-689c537c",
+   "name": "Fourways High School",
+   "address": "Kingfisher Dr, Fourways, Sandton, 2055",
+   "aliases": [
+    "Fourways High",
+    "FHS Fourways"
+   ],
+   "place_id": "ChIJKe5j4aV2lR4RSnSpNLgUkQI",
+   "venue_kind": "physical"
+  },
+  {
+   "id": "venue-1f9a5150",
+   "name": "James Bernic",
+   "address": "Unit 3, 41 Kent Rd, Dunkeld",
+   "aliases": [
+    "James Bernic",
+    "James Bernic Dunkeld"
+   ],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "redhill-campus",
+   "name": "Redhill School (campus)",
+   "address": "Redhill School campus, Morningside, Sandton, South Africa",
+   "aliases": [],
+   "venue_kind": "physical"
+  },
+  {
+   "id": "estadio-jose-amalfitani",
+   "name": "Estadio Jose Amalfitani, Buenos Aires",
+   "address": "Estadio Jose Amalfitani, Buenos Aires, Argentina",
+   "aliases": [
+    "Estadio Jose Amalfitani",
+    "Estadio Jose Amalfitani, Buenos Aires"
+   ],
+   "venue_kind": "broadcast"
+  },
+  {
+   "id": "mt-bank-stadium-baltimore",
+   "name": "M&T Bank Stadium, Baltimore",
+   "address": "M&T Bank Stadium, Baltimore, United States",
+   "aliases": [
+    "M&T Bank Stadium",
+    "M&T Bank Stadium, Baltimore"
+   ],
+   "venue_kind": "broadcast"
+  },
+  {
+   "id": "redhill-hpc",
+   "name": "High Performance Centre, Redhill School",
+   "address": "High Performance Centre, Redhill School campus, Morningside, Sandton",
+   "aliases": [
+    "High Performance Centre",
+    "Redhill HPC",
+    "HPC"
+   ],
+   "parent_venue": "redhill-campus",
+   "venue_kind": "campus_sub_venue"
+  }
+ ],
+ "ambiguous_signatures": [
+  "45 jan"
+ ],
+ "cases": [
+  {
+   "location": "Fourways High School, Kingfisher Dr, Fourways",
+   "venue_id": "venue-689c537c",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Redhill School (Outspan fields), School Road, Morningside",
+   "venue_id": "redhill-outspan",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill School — 20 Summit Road, Morningside, Sandton",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "20 summit rd morningside",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "redhill school",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "The 12 Apostles Hotel & Spa, Camps Bay",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Café Del Sol, 45 Jan Smuts Ave",
+   "venue_id": "venue-b1e662a1",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Microsoft Teams Meeting",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "OR Tambo International Airport",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Kathmandu, Nepal",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "TBD",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "1 Wale Street, Cape Town CBD, Cape Town, 8001, South Africa",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "10, The Boatshed, Long St, Thesen Island, Knysna, 6571",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "11 Holt St, East, Sandton, 2196",
+   "venue_id": "venue-7fead97c",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "11 rue de Saint-Julien, 33250 Saint Julien Beychevelle, France",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "11 rue de Saint-Julien, 33250 Saint Julien Beychevelle, France, 11 rue de Saint-Julien, 33250, SAINT JULIEN BEYCHEVELLE",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "115 Rue Georges Bonnac, Bordeaux City-Centre, 33000 Bordeaux, France",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "12 Apostles Hotel & Spa, Kaapstad",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "13th St & Braemar Road, Victory Park, Randburg, 2195",
+   "venue_id": "venue-79f3f2ae",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "14 Sungai Estate, Hornbill Road, Douglasdale",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "15 rue Notre Dame, Bordeaux, France",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "17-19 Egerton Terrace, Chelsea, London, United Kingdom SW3 2BX",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "17-19 Egerton Terrace, London, SW3 2BX, United Kingdom",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "1st Floor, South Block, 200 Rivonia Rd, Morningside, Sandton, 2196",
+   "venue_id": "intercare-medimix",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "2 Connaught Avenue, Sandringham, Johannesburg",
+   "venue_id": "venue-cb6cd7f0",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "20 Summit Road, Morningside, Sandton, 2196",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "20 Summit Road, Morningside, Sandton, 2196, South Africa",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "209 Sanchaya Kosh, Thamel, Kathmandu, Nepal",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "28 Judy Cres, Morningside Manor, Sandton, 2057",
+   "venue_id": "venue-07b9b647",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "3-5 Avenue de Magudas, 33185 Le Haillan, France",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "33112 Saint-Laurent-Médoc, France",
+   "venue_id": "venue-c1019531",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "4 Side Rd, Morningside, Sandton, 2057, South Africa",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "43 Waterstone Estate North, Waterstone Drive, Benmore Gardens",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "44 Middle Rd, Morningside, Sandton, 2057, South Africa",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "44B Middle Road, Morningside",
+   "venue_id": "home",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "4th Floor, North Block, Hyde Park Shopping Centre, Jan Smuts Avenue, Hyde Park",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "50 Dundalk Ave, Parkview, Johannesburg",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "792, Highland Gate Golf and Trout Estate, Dullstroom, 0001",
+   "venue_id": "venue-bf90c7d8",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "8 Arbroath Ave Hurlingham",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": ">RMB 1 Merchant Place, 1st Floor, Talent Boardroom HR, Corner Rivonia Road and Fredman Drive, Sandton, Parking: 4Merchant Place (Visitors parking)",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": ">RMB 1 Merchant Place, Ground Floor, Pub",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "AURUM Restaurant, 75 Maude Street, Sandton, GP, 2196, ZA",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "AfriCamps at Stanford Hills, Stanford",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Au Fond du Jardin, 6 Rue de la Râpe 67000 Strasbourg",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Aéroport Charles de Gaulle 2 TGV",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Aéroport de Bordeaux-Mérignac, Terminal B",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Beaulieu College, 107 Maple Rd, Kyalami AH, Midrand, 1684",
+   "venue_id": "venue-b88ea256",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Besos Restaurant, The Woods Shopping Centre, 345 Jan Smuts Ave, Craighall Park, Randburg, 2146",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Bona Bana Art School, 138 Kelvin Drive, Morningside Manor, Johannesburg",
+   "venue_id": "bona-bana-art",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Bordeaux BOD",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Bordeaux, France",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Breathtaking Sea Views ☼ Beachfront ⛱ Serviced ⛱, Dolphin Coast",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Brescia House School, 14 Sloane St, Bryanston, Sandton, 2191",
+   "venue_id": "venue-d8827c84",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Bryanston",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "COSEC stadium, Pauillac",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Cape Town - O.R. Tambo (Jo'burg) (MN118)",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Cape Town - O.R. Tambo (Jo'burg) (MN6414)",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Cape Town CPT",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Carriesjumpingcastles",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Catania CTA",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Château Beychevelle, Saint-Julien-Beychevelle",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Château Lynch-Bages, Bages, Pauillac",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Clay Café Illovo, 204 Oxford Rd, Illovo, Sandton, 2196",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Claytopia Pottery Studio, 24A Nola Ave, Buccleuch, Johannesburg, 2090",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Cnr Rivonia & South Rd Morningside, Sandown, Sandton, 2196",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "ComplanTerra, 42 Rue Sainte-Colombe, Bordeaux",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Corner Eastwood and, Parks Boulevard, Rosebank, 2196, South Africa",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Cyferfontein, Unit Number 8, Mabalingwe, Bela-Bela, 0480",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "DHL Stadium, Cape Town",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Dainfern",
+   "venue_id": "venue-f0fb6c96",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Dainfern College, 96 Broadacres Dr, Dainfern, Johannesburg, 2055",
+   "venue_id": "venue-f0fb6c96",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Delizia Da Bartolo, 54 Rue du Palais Gallien, Bordeaux, Nouvelle-Aquitaine, 33000, FR",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Die Gaaitjie Restaurant, Sampson Street, Paternoster, 7381, South Africa",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Dineplan aria-hidden=true> Dineplan",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Discovery Store - Sandton, 1 Discovery Place, Sandhurst, Sandton, Gauteng, 2196",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Dubai DXB",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Dullstroom, 1110, Mpumalanga, South Africa, South Africa",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Durban DUR",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Dwarika's Sanctuary, Marga Dhulikhel, Kavre, Bagmati 45200, Nepal",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Elenjical Offices The Marc",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Ellis Park, Johannesburg",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Estadio José Amalfitani, Buenos Aires",
+   "venue_id": "estadio-jose-amalfitani",
+   "venue_kind": "broadcast"
+  },
+  {
+   "location": "FFC Lecture Hall, Summit Road 20, Sandton, South Africa, 2057",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "FNB Stadium, Johannesburg",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Fego Caffe, RMB 2 Merchant Place, 1 Fredman Dr, Sandton",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Fego's Cafe - RMB Campus | Cnr Fredman and Rivonia Road Sandton",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Fego's, 1 Fredman Dr, Sandton",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Filo Flat, Florence",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Flamenco Esencia, C. Duarte, 3, Sevilla, Sevilla, 41010, ES",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Fornos Benmore Gardens",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Fourways High School, Kingfisher Dr, Fourways, Sandton, 2055",
+   "venue_id": "venue-689c537c",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Gaaitjie Restaurant Paternoster, Sampson Street, Paternoster, WC 7381, ZA",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Gillard St, Morningside, Johannesburg, 2146",
+   "venue_id": "venue-d28d14a2",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Glow4Events, Kelvin Dr & Bowling Ave, Morningside Manor, Johannesburg, 2052",
+   "venue_id": "venue-52b2f8c7",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Grand Hyatt Kuala Lumpur, Kuala Lumpur",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Hamad International Airport (DOH) — South Node, Doha, Qatar",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "High Performance Centre, Redhill School, 20 Summit Rd, Morningside, Sandton",
+   "venue_id": "redhill-hpc",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Highland Gate Golf and Trout Estate, Dullstroom, 0001",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Highland Gate Golf and Trout Estate, Dullstroom, 1110",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Hollywoodbets Kings Park, Durban",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "House Steen",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "House Steen - Morningside",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Hudsons, Cnr of 4th Ave and 14th Street, Parkhurst",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Hôtel de Sèze & Spa Bordeaux Centre, Bordeaux",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Il Gardino, 44 Stanley Milpark",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Impasse Brown de Colstoun, 33300 Bordeaux, France",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Intercare Sandton, MediMix, 200 Rivonia Rd, Morningside, Sandton, 2057",
+   "venue_id": "intercare-medimix",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Jan Smuts House Museum - Irene",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Johannesburg JNB",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Kathmandu, Nepal",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "KimCo Beauty Lab, 2 Merchant Place, 1 Fredman Drive, Sandton, Gauteng, 2196, ZA",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Kuala Lumpur KUL",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "LA MOUTARDERIE FALLOT, 31 Rue du Faubourg Bretonnière, Beaune, Bourgogne-Franche-Comté, FR, 21200",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "LE TOUT DU CRU - BORDEAUX, 52 Quai de Bacalan, 33300, Bordeaux",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "La Delizia Da Bartolo, 54 Rue du Palais Gallien, 33000 Bordeaux",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "La Vie en Rose, 48 Melville Rd, Johannesburg 2192",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Le petit bistro, 71 7th Street, Johannesburg, GP, 2000, ZA",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Len Miller Hall, 20 Summit Rd, Morningside, Sandton, South Africa, 2196",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Lila Bruk",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Loftus Versfeld, Pretoria",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "London Euston",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "London, United Kingdom and Naples, Italy",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "M&T Bank Stadium, Baltimore",
+   "venue_id": "mt-bank-stadium-baltimore",
+   "venue_kind": "broadcast"
+  },
+  {
+   "location": "Madrid Atocha",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Madrid Pta Atocha - Almudena Grandes",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Majeka House (26 Houtkap, Stellenbosch",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Majeka House, Stellenbosch",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Melrose Arch, 10 The High St, Melrose, Johannesburg, 2196",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Microsoft Teams Meeting",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Morningside",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Morningside Country Club, 1 De La Rey Rd, Morningside, Sandton, 2196",
+   "venue_id": "mcc-hockey",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Morningside Country Club, 1 De La Rey Rd, Morningside, Sandton, 2196, South Africa",
+   "venue_id": "mcc-hockey",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Morningside Country Club, 1 De Le Ray Road, Sandton, Gauteng 2196 South Africa",
+   "venue_id": "mcc-hockey",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Mr Pants Wine Bar, Shop 7, Delta Central, 74 Hillcrest Ave, Blairgowrie, Randburg, 2194",
+   "venue_id": "venue-b66d8687",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "My place (37 Tequesta, 1 Paarl Lane, Paulshof)",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Nelson Mandela Bay Stadium, Gqeberha",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "O.R. Tambo International Airport (R21, Johannesburg Gauteng, 1627 South Africa)",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "O.R. Tambo International Airport, Terminal B, Johannesburg",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Ober Mamma, 107 Boulevard Richard-Lenoir, Paris, IDF, 75011, FR",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Olivedale",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Oshika's",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Oval Field, Redhill School, 196 West Rd North, Morningside, Sandton, South Africa, 2196",
+   "venue_id": "redhill-wrn",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Oval Field, West Road North, Sandton, South Africa, 2057",
+   "venue_id": "redhill-wrn",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "POINT ROUGE, 1, Quai de Paludate, 33800, BORDEAUX",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Pan y Circo, Calle Rivero, 11, Sevilla, AN, 41004, ES",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Paris CDG",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Paris Gare de l'Est",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Park Hyatt, Rosebank",
+   "venue_id": "venue-7228a660",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Paserene Lounge",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Pee And Bee, 9 Rue Lagrange, Paris, IDF, FR, 75005",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Poplar Park - River Club, Poplar Avenue 11, Riverclub, Sandton, South Africa, 2191",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Quais de Pauillac, Pauillac",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "R536, Hazyview, 1242",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "RMB, 1 Merchant Place, Stephen's Office, 6th Floor",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Randburg Astroturf, Praegville, Randburg, 2194",
+   "venue_id": "venue-133aaa33",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Randburg Hockey Astro",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Redhill",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill School (Outspan fields) — Outspan courts, 20 Summit Rd, Morningside, Sandton",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill School (Outspan fields), School Road, Morningside, Sandton, 2057, South Africa",
+   "venue_id": "redhill-outspan",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill School (Summit entrance), 20 Summit Road, Morningside, Sandton, 2196, South Africa",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill School (Summit), 20 Summit Road, Morningside, Johannesburg",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill School (Summit), 20 Summit Road, Morningside, Sandton, 2196, South Africa",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill School, 20 Summit Rd, Morningside, Sandton, 2057, South Africa",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill School, 20 Summit Rd, Morningside, Sandton, 2196",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill School, 20 Summit Road, Morningside, Sandton",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill School, 20 Summit Road, Morningside, Sandton, South Africa, 2057",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill School, 20 Summit Road, Morningside, Sandton, South Africa, 2196",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill School, P Block, 20 Summit Road, Morningside, Sandton",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill Theatre, Auditorium, 20 Summit Road, Morningside, Sandton, South Africa, 2196",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill — Astro",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill — Summit Hockey Fields",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Roedean School, Princess of Wales Terrace, Parktown, Johannesburg, 2193",
+   "venue_id": "venue-6df95e83",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Rome FCO",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Room 32, Park Hyatt Johannesburg, 6 Tottenham Ave, Melrose Estate, Johannesburg, 2196",
+   "venue_id": "venue-7228a660",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Sabi River Eco Estate, 133 Dragonfly Drive, Hazyview, 1242",
+   "venue_id": "venue-b83e4d94",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Sandown High School, Marion Street, Sandown, Sandton",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Sandton City",
+   "venue_id": "sandton-city",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Sandton Shul, Longdon Ave, Morningside, Sandton, 2057",
+   "venue_id": "venue-77d8b683",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Seattle @ the MArc",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Sedgefield, South Africa",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Sevilla Santa Justa",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Sevilla-Santa Justa",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Seville",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Shelanti Tea Garden: 263 Jean Avenue, Lyttelton, Centurion",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Shop 7, Delta Central, 74 Hillcrest Ave, Blairgowrie, Randburg, 2194",
+   "venue_id": "venue-b66d8687",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Singapore SIN",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Sorbet Salon Morningside",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Southern Sun Waterfront Cape Town, Kaapstad",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Spa",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Strasbourg station",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Sun City Resort, 0316 North West Province, South Africa",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "TBC",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "TBD",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Telecon",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "The 12 Apostles Hotel & Spa, Kaapstad",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "The Campus, corner Sloane Street and Main Road, Bryanston, Sandton",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "The Chair Meeting Room",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "The Drop Indoor Skydiving, 23 Ridge Rd, Vorna Valley, Midrand, 1686",
+   "venue_id": "venue-d5d8017f",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "The Green Peppercorn, Morningside",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "The Marc",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "The Marc, Shop UR 9, 129 Rivonia Rd, Sandown, Sandton, 2196",
+   "venue_id": "venue-0a5a3640",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "The Playshop school",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Thesen Island, Knysna, 6571",
+   "venue_id": "venue-6cd801d5",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Time' movie tickets",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Tokyo and Osaka, Japan",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Unit 3, 41 Kent Rd, Dunkeld",
+   "venue_id": "venue-1f9a5150",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "United Kingdom",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "VFS, 2nd Floor Rivonia Village Corner Rivonia Boulevard and Mutual Road Sandton, Johannesburg, JOHANNESBURG, SOUTH AFRICA, 2128",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "VILLA 11 LAKEVIEW DRIVE",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Vaal Dam",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Villa Capri, Calle de Hortaleza, 118, Madrid, MD, 28004, ES",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Whisky",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Wine Menu, 3 Desmond Rd, Kramerville, Johannesburg, 2090",
+   "venue_id": "venue-42be72e8",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "Xigera Safari Lodge, Masarwa",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "aLevante, Largo della Gancia, 5, 96100 Siracusa",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "https://events.dailymaverick.co.za/events/2026/05/29/move-better-every-day-strength-mobility-injury-prevention",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "https://events.dailymaverick.co.za/webinar/TNIQBRIH",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "https://seismic.zoom.us/j/97101869203",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "https://streamyard.com/watch/6wZj3ex9g2g4?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWdpc3RyYXRpb25JZCI6IjhiYzJkN2U1LTI3NjMtNGRkNC1hYTdiLTU5ZThlODAxMDAzYSIsIndlYmluYXJJZCI6IjZ3WmozZXg5ZzJnNCIsImlhdCI6MTc2ODQ1MjU5OX0.QuXTtKUzr-YeE28EIwa3yUmFp5Mqv_Nbl7FQvR_Ntmk",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "https://streamyard.com/watch/UcDhDBGxK9Tm?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWdpc3RyYXRpb25JZCI6IjI4YmQ3ZjIxLTg3ZjEtNDM4Yi05YWNhLTA0YTViN2E4NGE5NiIsIndlYmluYXJJZCI6IlVjRGhEQkd4SzlUbSIsImlhdCI6MTc3MDI2NDE1MH0.b2uvCiAajI81Fx_nbHms8iso2MHJqs1hiSMj5bmBvzs",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "https://us02web.zoom.us/w/87110671976?tk=l0JzLaceSX7PARM-JtLuoH4eLKhgNetrE1aSaPXg0zc.DQcAAAAUSDNeaBYyUno1b05vRVNWeU5oTGVmdTJKZEFnAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&uuid=WN_YUNq48vYTKmOfCIGMt31tA",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "https://us04web.zoom.us/j/176889348?pwd=V2VpUEVOdVhhUmdHNzZCK1dvaFdzdz09",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "https://webinars.airtable.com/airtable-webinars/introducing-omni-and-field-agents-edbb8f803eacfeca33f7ed27?bmid=508bb73a7077",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "https://webinars.airtable.com/airtable-webinars/new-feature-spotlight-april-2026?bmid=508bb73a7077&bma=fa26de39168d&bmi=0db59446831c&bmid_type=member",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "https://www.linkedin.com/events/africa-sdrivetowardssustainabil6849295377468813313",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "https://www.linkedin.com/events/bonds-loans-sukukafrica20226842126141331935232",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "the glen party farmyard, 90 mac gillivray road",
+   "venue_id": null,
+   "venue_kind": null
+  },
+  {
+   "location": "Ô p'tit Bahut, 10 Rue des Bahutiers, Bordeaux",
+   "venue_id": null,
+   "venue_kind": null
+  }
+ ]
+}

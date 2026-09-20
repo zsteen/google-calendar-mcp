@@ -130,18 +130,8 @@ export class GoogleCalendarMcpServer {
 
     ToolRegistry.registerAll(this.server, this.executeWithHandler.bind(this), this.config);
 
-    // Register account management tools separately (they need special context).
-    // C36: gated. `manage-accounts` can DISCONNECT the Google account the whole
-    // calendar path depends on, it registers outside ToolRegistry.registerAll
-    // so the Phase 7f denylist and ENABLED_TOOLS both filter past it, and the
-    // startup log has been claiming it was off since Phase 7f. Enable with
-    // CLAUDIA_ENABLE_MANAGE_ACCOUNTS=true when re-authenticating an account.
-    if (manageAccountsEnabled) {
-      this.registerAccountManagementTools();
-    } else {
-      process.stderr.write('Phase 7f: skipping manage-accounts '
-        + '(CLAUDIA_ENABLE_MANAGE_ACCOUNTS is not true)\n');
-    }
+    // Register account management tools separately (they need special context)
+    this.registerAccountManagementTools();
   }
 
   /**
