@@ -67,11 +67,21 @@ const STREET_RE = new RegExp(
     '\\b(\\d+[a-z]?)\\s+([a-z]+)(?:\\s+(' + Object.keys(STREET_SUFFIXES).sort().join('|') + '))?\\b');
 
 /** `street-number street-name [suffix]` from an address, or null. */
+// Bare compass words are never a street NAME. "…, 2057, South Africa" otherwise
+// matches as street "2057 South" — a postcode wearing the country as its name.
+// Known since 18 Sep as `2196 south` and called harmless because ambiguous
+// signatures never resolve; that held only because six venues share 2196.
+// `2057 south` had ONE owner (redhill-outspan, no street number in its curated
+// address) so it resolved, and a dentist in postcode 2057 came back a school.
+// A real "South Road" still signs — the suffix is what makes it a street.
+const NOT_STREET_NAMES = new Set(['south', 'north', 'east', 'west']);
+
 export function addressSignature(text: string | null | undefined): string | null {
     if (!text) return null;
     const m = STREET_RE.exec(norm(text));
     if (!m) return null;
     const [, num, word, suffix] = m;
+    if (NOT_STREET_NAMES.has(word) && suffix === undefined) return null;
     if (word in STREET_SUFFIXES && suffix === undefined) return `${num} ${STREET_SUFFIXES[word]}`;
     const base = `${num} ${word}`;
     return suffix ? `${base} ${STREET_SUFFIXES[suffix]}` : base;
