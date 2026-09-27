@@ -16,6 +16,7 @@ import {
     convertGoogleEventToStructured
 } from "../../types/structured-responses.js";
 import { assertWritable } from "../../utils/write-allowlist.js";
+import { assertSeriesHasEnd } from "./seriesEnd.js";
 import { resolveSendUpdates } from "../../utils/invite-allowlist.js";
 import { pokeTripFeed } from "./tripFeedStamp.js";
 import { carrySplitSeriesProperties, linkedSeriesRefusal } from "./seriesSplit.js";
@@ -37,6 +38,13 @@ export class UpdateEventHandler extends BaseToolHandler {
 
         // Phase 7f write allowlist — see PHASE-7F-SPEC.md §3 Patch B.
         assertWritable(resolvedCalendarId);
+
+        // S1: an update that SETS a recurrence is held to the same rule as a create.
+        // Internal rewrites (the thisAndFollowing split, the UNTIL helper) never pass
+        // args.recurrence, so a legacy series can still be split or ended.
+        if (validArgs.recurrence !== undefined && validArgs.recurrence !== null) {
+            assertSeriesHasEnd(validArgs.recurrence);
+        }
 
         // Phase 7f: refuse update on a recurring event without explicit scope.
         // The upstream schema makes modificationScope optional and the handler
