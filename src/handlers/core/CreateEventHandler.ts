@@ -14,6 +14,7 @@ import { resolveSendUpdates } from "../../utils/invite-allowlist.js";
 import { stampClaudia, pokeTripFeed } from "./tripFeedStamp.js";
 import { applyWriteEnvelope } from "./calendarEnvelope.js";
 import { classifyLocationAtWrite } from "./venueKb.js";
+import { assertSeriesHasEnd } from "./seriesEnd.js";
 import { ACTION_ADOPT, ACTION_AMBIGUOUS, ACTION_NOOP, ACTION_PATCH, ACTION_REVIVE, ACTION_SUPPRESSED, contentHash, decideOnConflict, decideOnKeyMatch, deriveIdFromBody, isIdempotentWrite } from "./calendarIdempotency.js";
 import { recordRevive, reconciledKeys } from "./calendarReconciliation.js";
 
@@ -41,6 +42,9 @@ export class CreateEventHandler extends BaseToolHandler {
         // Check runs AFTER name resolution so a name resolving to an out-of-allowlist
         // ID is still refused. See PHASE-7F-SPEC.md §3 Patch B.
         assertWritable(resolvedCalendarId);
+
+        // S1: a daily/weekly series must carry UNTIL or COUNT (seriesEnd.ts).
+        assertSeriesHasEnd(validArgs.recurrence);
 
         // Phase 7f guest-invite (PHASE-7F-GUEST-INVITE-SPEC.md): decide sendUpdates
         // from the invite allowlist instead of a blanket 'none'. 'all' (email every

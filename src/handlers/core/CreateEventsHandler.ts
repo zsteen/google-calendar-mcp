@@ -6,6 +6,7 @@ import type { calendar_v3 } from 'googleapis';
 import { createTimeObject } from "../../utils/datetime.js";
 import { createStructuredResponse } from "../../utils/response-builder.js";
 import { CreateEventsResponse, convertGoogleEventToStructured, StructuredEvent } from "../../types/structured-responses.js";
+import { assertSeriesHasEnd } from "./seriesEnd.js";
 
 export class CreateEventsHandler extends BaseToolHandler {
     async runTool(args: any, accounts: Map<string, OAuth2Client>): Promise<CallToolResult> {
@@ -51,6 +52,8 @@ export class CreateEventsHandler extends BaseToolHandler {
             const sendUpdates = eventInput.sendUpdates ?? sharedDefaults.sendUpdates;
 
             try {
+                // S1: refused per event, so one open-ended series fails alone.
+                assertSeriesHasEnd(eventInput.recurrence);
                 const cacheKey = `${account ?? ''}:${calendarId}`;
 
                 // Cache getClientWithAutoSelection per unique (account, calendarId)
