@@ -656,6 +656,51 @@
    "venue_kind": "physical"
   },
   {
+   "location": "Redhill - Summit Hockey Fields",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill – Summit Hockey Fields",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill-Summit Hockey Fields",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "REDHILL SCHOOL (SUMMIT ENTRANCE)",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Eva’s school",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Redhill, Morningside",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Summit Rd, Sandton",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
+   "location": "Morningside Country Club, 1 De Le Ray Road, Sandton",
+   "venue_id": "mcc-hockey",
+   "venue_kind": "physical"
+  },
+  {
+   "location": "20 Summit Rd, Sandton",
+   "venue_id": "redhill-summit",
+   "venue_kind": "campus_sub_venue"
+  },
+  {
    "location": "Microsoft Teams Meeting",
    "venue_id": null,
    "venue_kind": null
